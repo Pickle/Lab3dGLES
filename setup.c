@@ -12,48 +12,48 @@
 #endif
 
 #ifdef WIN32
-HRESULT CreateLink(LPCSTR lpszPathObj, 
+HRESULT CreateLink(LPCSTR lpszPathObj,
 		   LPSTR lpszPathLink, LPSTR lpszDesc,
-		   LPSTR lpszArgs) { 
-    HRESULT hres; 
-    IShellLink* psl; 
+		   LPSTR lpszArgs) {
+    HRESULT hres;
+    IShellLink* psl;
     char p[MAX_PATH];
- 
+
     CoInitialize(NULL);
-    hres = CoCreateInstance(&CLSID_ShellLink, NULL, 
+    hres = CoCreateInstance(&CLSID_ShellLink, NULL,
 			    CLSCTX_INPROC_SERVER, &IID_IShellLink,
-			    (void *)&psl); 
-    if (SUCCEEDED(hres)) { 
-        IPersistFile* ppf; 
-	
+			    (void *)&psl);
+    if (SUCCEEDED(hres)) {
+        IPersistFile* ppf;
+
 	GetCurrentDirectory(MAX_PATH, p);
-        psl->lpVtbl->SetWorkingDirectory(psl, p); 
-        hres=psl->lpVtbl->SetPath(psl, lpszPathObj); 
+        psl->lpVtbl->SetWorkingDirectory(psl, p);
+        hres=psl->lpVtbl->SetPath(psl, lpszPathObj);
 
-        psl->lpVtbl->SetArguments(psl, lpszArgs); 
+        psl->lpVtbl->SetArguments(psl, lpszArgs);
 
-        psl->lpVtbl->SetDescription(psl, lpszDesc); 
- 
-        hres = psl->lpVtbl->QueryInterface(psl, &IID_IPersistFile, 
-					   (void *)&ppf); 
- 
-        if (SUCCEEDED(hres)) { 
-            WORD wsz[MAX_PATH]; 
- 
+        psl->lpVtbl->SetDescription(psl, lpszDesc);
+
+        hres = psl->lpVtbl->QueryInterface(psl, &IID_IPersistFile,
+					   (void *)&ppf);
+
+        if (SUCCEEDED(hres)) {
+            WORD wsz[MAX_PATH];
+
 	    fprintf(stderr,"Trying to save shortcut...\n");
-            MultiByteToWideChar(CP_ACP, 0, lpszPathLink, -1, 
-				wsz, MAX_PATH); 
+            MultiByteToWideChar(CP_ACP, 0, lpszPathLink, -1,
+				wsz, MAX_PATH);
 
-            hres = ppf->lpVtbl->Save(ppf, wsz, TRUE); 
+            hres = ppf->lpVtbl->Save(ppf, wsz, TRUE);
             ppf->lpVtbl->Release(ppf);
 	    if (SUCCEEDED(hres))
 		fprintf(stderr,"Done.\n");
-        } 
-        psl->lpVtbl->Release(psl); 
-    } 
+        }
+        psl->lpVtbl->Release(psl);
+    }
     CoUninitialize();
-    return hres; 
-} 
+    return hres;
+}
 
 void createshortcut(void) {
     ITEMIDLIST *l;
@@ -311,7 +311,7 @@ void selectionmenu(int alts,char titles[][30],int *value) {
     int j=12*alts+24;
 
     drawmenu(304,j,menu);
-    
+
     for(i=0;i<alts;i++) {
 	strcpy(textbuf,titles[i]);
 	textprint(71,120-6*alts+12*i,lab3dversion?32:34);
@@ -324,7 +324,7 @@ void selectionmenu(int alts,char titles[][30],int *value) {
     else
 	i=getselection(28,99-6*alts,*value,alts);
 
-    if (i>=0) *value=i;   
+    if (i>=0) *value=i;
 }
 
 int resolutionmenu(int alts,int start,char titles[][30],int def) {
@@ -352,7 +352,7 @@ int resolutionmenu(int alts,int start,char titles[][30],int def) {
     }
 
     drawmenu(304,j,menu);
-    
+
     for(i=0;i<alts;i++) {
 	strcpy(textbuf,titles[i]);
 	textprint(71,120-6*alts+12*i,lab3dversion?32:34);
@@ -377,7 +377,9 @@ int getnumber(void) {
     j = 0;
     buf[0]=0;
     ch = 0;
+#if !defined(EGL_RAW)
     SDL_EnableUNICODE(1);
+#endif
     while ((ch != 13) && (ch != 27))
     {
 	while ((ch=getkeypress()) == 0)
@@ -422,7 +424,9 @@ int getnumber(void) {
 		j++;
 	}
     }
+#if !defined(EGL_RAW)
     SDL_EnableUNICODE(0);
+#endif
     for(i=0;i<256;i++)
 	keystatus[i] = 0;
     if (ch==27) return -1;
@@ -433,7 +437,7 @@ void customresolution(void) {
     int x,y;
 
     drawinputbox();
-    finalisemenu();    
+    finalisemenu();
     sprintf(&textbuf[0],"Enter screen width:");
     textprint(180-(strlen(textbuf)<<2),135+1,(char)161);
     x=getnumber();
@@ -460,13 +464,17 @@ int modecompare(const void *a, const void *b) {
 }
 
 void setupsetresolution(void) {
-    int a,i,m;
+    int a;
+#if !defined(EGL_RAW)
+    int i,m;
     int resolutionmenusize;
     int detectedresolution[11];
     char resolutiondetectmenu[11][30];
     SDL_Rect **modes,**umodes;
+#endif
     a=resolutionmenu(3,0,resolutiontypemenu,0);
 
+#if !defined(EGL_RAW)
     switch(a) {
         case 0:
 	    modes=umodes=SDL_ListModes(NULL,SDL_FULLSCREEN);
@@ -492,7 +500,7 @@ void setupsetresolution(void) {
 		    if (modes[i]->w<10000&&
 			modes[i]->h<10000) {
 			detectedresolution[resolutionmenusize]=
-			    modes[i]->w*10000+modes[i]->h;		
+			    modes[i]->w*10000+modes[i]->h;
 			sprintf(resolutiondetectmenu[resolutionmenusize],
 				"%dx%d",
 				detectedresolution[resolutionmenusize]/10000,
@@ -513,7 +521,7 @@ void setupsetresolution(void) {
 	    free(modes);
 	    break;
 	    /*
-	case 1:	    
+	case 1:
 	    a=resolutionmenu(8,0,resolutionstandardmenu,resolutionnumber);
 	    if (a>=0) resolutionnumber=a;
 	    break;
@@ -526,6 +534,7 @@ void setupsetresolution(void) {
 	    customresolution();
 	    break;
     }
+#endif
 }
 
 void setupsetfullscreen(void) {
@@ -574,12 +583,14 @@ void setupscalingmodemenu(void) {
 
 void setupsetkeys(void) {
     int i=0,j,quit=0,sk;
+#if !defined(EGL_RAW)
     SDL_Event event;
+#endif
 
     i=0;
     while(!quit) {
 	drawmenu(360,240,menu);
-    
+
 	for(j=0;j<numkeys;j++) {
 	    strcpy(textbuf,keynames[j]);
 	    textprint(31,13+12*j,lab3dversion?32:34);
@@ -587,7 +598,7 @@ void setupsetkeys(void) {
 	    textbuf[11]=0;
 	    textprint(261,13+12*j,lab3dversion?32:34);
 	}
-    
+
 	finalisemenu();
 	i=getselection(-12,-9,i,numkeys);
 	if (i<0) quit=1;
@@ -595,10 +606,13 @@ void setupsetkeys(void) {
 	else {
 	    j=-1;
 	    while(j<0) {
+#if defined(WIZ) || defined(CAANOO)
+		j = sk = GetButtonsWizCaanoo();
+#else
 		while(SDL_PollEvent(&event))
 		{
 		    switch(event.type)
-		    {	      
+		    {
 			case SDL_KEYDOWN:
 			    sk=event.key.keysym.sym;
 			    if (sk<SDLKEYS) {
@@ -609,6 +623,7 @@ void setupsetkeys(void) {
 			    break;
 		    }
 		}
+#endif
 		SDL_Delay(10);
 	    }
 	    newkeydefs[i]=j;
@@ -622,7 +637,7 @@ void setupsetbuttons(void) {
     i=0;
     while(!quit) {
 	drawmenu(360,240,menu);
-    
+
 	for(j=0;j<numkeys;j++) {
 	    strcpy(textbuf,keynames[j]);
 	    textprint(31,13+12*j,lab3dversion?32:34);
@@ -635,7 +650,7 @@ void setupsetbuttons(void) {
 	    textbuf[11]=0;
 	    textprint(261,13+12*j,lab3dversion?32:34);
 	}
-    
+
 	finalisemenu();
 	i=getselection(-12,-9,i,numkeys);
 	if (i<0) quit=1;
@@ -646,7 +661,7 @@ void setupsetbuttons(void) {
 		while(SDL_PollEvent(&event))
 		{
 		    switch(event.type)
-		    {	      
+		    {
 		    case SDL_JOYBUTTONDOWN:
 			sk=event.jbutton.button;
 			if (sk<numjoybuttons) {
@@ -679,7 +694,7 @@ void setupsetaxes(void) {
     i=0;
     while(!quit) {
 	drawmenu(360,240,menu);
-    
+
 	for(j=0;j<numaxes;j++) {
 	    strcpy(textbuf,axisnames[j]);
 	    textprint(31,13+12*j,lab3dversion?32:34);
@@ -695,7 +710,7 @@ void setupsetaxes(void) {
 	    textbuf[11]=0;
 	    textprint(261,13+12*j,lab3dversion?32:34);
 	}
-    
+
 	finalisemenu();
 	i=getselection(-12,-9,i,numaxes);
 	if (i<0) quit=1;
@@ -718,7 +733,7 @@ void setupsetaxes(void) {
 		while(SDL_PollEvent(&event))
 		{
 		    switch(event.type)
-		    {	      
+		    {
 		    case SDL_JOYAXISMOTION:
 			sk=event.jaxis.axis;
 			if (sk<numjoyaxes) {
@@ -915,7 +930,7 @@ void configure(void) {
     switch(music) {
 	case 2:
 	    musicsource=1;
-	    break;	    
+	    break;
 	case 1:
 	    musicsource=2;
 	    break;
@@ -941,6 +956,10 @@ void configure(void) {
 	soundblocksize<<=soundblock;
     }
     soundtimer=0;
+
+#ifdef OPENGLES
+    colourformat = GL_RGBA;
+#else
     switch(texturedepth) {
 	case 1:
 	    colourformat=GL_RGBA8;
@@ -951,6 +970,8 @@ void configure(void) {
 	default:
 	    colourformat=GL_RGBA;
     }
+#endif
+
     aspw=1.0;
     asph=1.0;
     switch(scaling) {
@@ -963,7 +984,7 @@ void configure(void) {
 	    if (div1<1) {
 	        fprintf(stderr,
 		        "Warning: resolution must be 320x200 or more"
-		        " for integer scaling.\n");	    
+		        " for integer scaling.\n");
 	        virtualscreenwidth=360;
 	        virtualscreenheight=240;
 	    } else {
@@ -997,13 +1018,18 @@ void configure(void) {
 void loadsettings(void) {
     FILE *file=fopen("settings.ini","r");
     int i,versflag,version;
+#if !defined(EGL_RAW)
     SDL_Rect **modes;
+#endif
 
     channels=2; musicvolume=64; soundvolume=64; gammalevel=1.0;
+#if !defined(EGL_RAW)
     modes=SDL_ListModes(NULL,SDL_FULLSCREEN);
+
     i=0;
     if ((modes!=NULL)&&(modes!=(SDL_Rect **)-1)&&(modes[0]!=NULL))
 	resolutionnumber=modes[0]->w*10000+modes[0]->h;
+#endif
 
     for(i=0;i<numkeys;i++)
 	newkeydefs[i]=newdefaultkey[i];
@@ -1035,7 +1061,7 @@ void loadsettings(void) {
     if (i==5) {
 	for(i=0;i<numkeys;i++)
 	    if (fscanf(file,"%d\n",newkeydefs+i)!=1) break;
-	
+
 	if (version>0) {
 	    for(i=0;i<numkeys;i++)
 		if (fscanf(file,"%d\n",buttondefs+i)!=1) break;
@@ -1046,8 +1072,8 @@ void loadsettings(void) {
     if (i>0) {
 	i=fscanf(file,"%d %d\n",&soundvolume,&musicvolume);
     } else i=0;
-    
-    
+
+
     if (i==2) {
 	i=fscanf(file,"%d\n",&cheat);
     } else i=0;
@@ -1076,7 +1102,7 @@ void savesettings(void) {
     if (file==NULL) return;
     fprintf(file,"-1 1\n");
     fprintf(file,"%d %d %d %d %d %d\n",inputdevice,resolutionnumber,fullscr,
-	    nearest,music,sound);    
+	    nearest,music,sound);
     for(i=0;i<numkeys;i++)
 	fprintf(file,"%d\n",newkeydefs[i]);
     for(i=0;i<numkeys;i++)
@@ -1100,7 +1126,10 @@ void setup(void) {
     K_INT16 i, j, k, walcounter;
     K_UINT16 l;
     char *v;
-    SDL_Surface *screen, *icon;
+#if !defined(EGL_RAW)
+    SDL_Surface *screen;
+    SDL_Surface *icon;
+#endif
 
     configure();
     statusbaryoffset=250;
@@ -1111,10 +1140,16 @@ void setup(void) {
 
     /* Display accuracy not important in setup... */
 
+#if !defined(EGL_RAW)
     SDL_Init(SDL_INIT_TIMER|SDL_INIT_VIDEO/*|SDL_INIT_NOPARACHUTE*/|
 	     SDL_INIT_JOYSTICK);
     SDL_JoystickOpen(0);
     SDL_JoystickEventState(1);
+#elif defined(EGL_RAW)
+    SDL_Init(SDL_INIT_TIMER);
+#endif
+
+#if !defined(OPENGLES)
     SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 5);
     SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE,5);
     SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE,5);
@@ -1125,37 +1160,55 @@ void setup(void) {
     SDL_GL_SetAttribute(SDL_GL_ACCUM_GREEN_SIZE,0);
     SDL_GL_SetAttribute(SDL_GL_ACCUM_BLUE_SIZE,0);
     SDL_GL_SetAttribute(SDL_GL_ACCUM_ALPHA_SIZE,0);
+#endif
+#if !defined(EGL_RAW)
     SDL_ShowCursor(0);
 
     SDL_EnableKeyRepeat(200,30);
-
+#endif
     fprintf(stderr,"Activating video...\n");
 
+#if defined(WIZ) || defined(CAANOO) || defined(GCW)
+    screenwidth=320; screenheight=240;
+#elif defined(PANDORA)
+    screenwidth=800; screenheight=480;
+    SDL_ShowCursor(1); // keeps it from locking up
+#else
     screenwidth=360; screenheight=240;
+#endif
 
+#if !defined(EGL_RAW)
+int flags = SDL_SWSURFACE;
+#elif !defined(OPENGLES)
+int flags = SDL_OPENGL;
+#endif
+
+#if !defined(EGL_RAW)
     icon=SDL_LoadBMP("ken.bmp");
     if (icon==NULL) {
 	fprintf(stderr,"Warning: ken.bmp (icon file) not found.\n");
     }
     SDL_WM_SetIcon(icon,NULL);
-    if ((screen=SDL_SetVideoMode(screenwidth, screenheight, 32, 
-				 SDL_OPENGL))==
-	NULL) {
-	fprintf(stderr,"Video mode set failed.\n");
-	SDL_Quit();
-	exit(-1);
+
+    if ((screen=SDL_SetVideoMode(screenwidth, screenheight, 32, flags))== NULL) {
+        fprintf(stderr,"Video mode set failed.\n");
+        SDL_Quit();
+        exit(-1);
     }
-
+#endif
+#if !defined(EGL_RAW)
     SDL_SetGamma(1.0,1.0,1.0); /* Zap gamma correction. */
-
+#endif
+#if !defined(EGL_RAW)
     screenwidth=screen->w;
     screenheight=screen->h;
+#endif
 
     virtualscreenwidth=360;
     virtualscreenheight=240;
 
     largescreentexture=0;
-							      
+
     if (largescreentexture) {
 	/* One large 512x512 texture. */
 
@@ -1168,9 +1221,11 @@ void setup(void) {
 	screenbufferheight=746;
     }
 
-    screenbuffer=malloc(screenbufferwidth*screenbufferheight);    
+    screenbuffer=malloc(screenbufferwidth*screenbufferheight);
     screenbuffer32=malloc(screenbufferwidth*screenbufferheight*4);
+#if !defined(EGL_RAW)
     SDL_WM_SetCaption("Ken's Labyrinth", "Ken's Labyrinth");
+#endif
 
     linecompare(479);
 
@@ -1179,7 +1234,7 @@ void setup(void) {
 	SDL_Quit();
 	exit(-1);
     }
-    
+
     fprintf(stderr,"Loading configuration file...\n");
 
     loadtables();
@@ -1213,10 +1268,10 @@ void setup(void) {
     walcounter = initialwalls;
     if (convwalls > initialwalls)
     {
-	v = pic;
+	v = (char*)pic;
 	for(i=0;i<convwalls-initialwalls;i++)
 	{
-	    walseg[walcounter] = v;
+	    walseg[walcounter] = (unsigned char*)v;
 	    walcounter++;
 	    v += 4096;
 	}
@@ -1271,7 +1326,7 @@ void setup(void) {
 	/* The ingame palette is stored in this GIF! */
 	kgif(1);
 	memcpy(spritepalette,palette,768);
-	
+
 	kgif(0);
 	settransferpalette();
 	fprintf(stderr,"Loading graphics...\n");
@@ -1280,11 +1335,21 @@ void setup(void) {
 	kgif(1);
 	fade(63);
     }
+#if !defined(OPENGLES)
     glDrawBuffer(GL_FRONT);
+#endif
 
     setupmenu();
-  
+
     savesettings();
+
+#ifdef OPENGLES
+    EGL_Close();
+#endif
+#if defined(WIZ) || defined(CAANOO)
+    CloseWizCaanoo();
+#endif
+
     SDL_Quit();
     exit(0);
 }

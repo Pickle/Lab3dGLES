@@ -53,14 +53,14 @@ void seqbuf_dump ()
 #endif
 
 /* Check OpenGL status and complain if necessary. */
-void checkGLStatus()
+void checkGLStatus( char* file, int line )
 {
     GLenum errCode;
     const GLubyte *errString;
 
     if ((errCode=glGetError())!=GL_NO_ERROR) {
 	errString=gluErrorString(errCode);
-	fprintf(stderr,"OpenGL Error: %s\n",errString);
+	fprintf(stderr,"OpenGL Error: %s file: %s line: %d\n",errString, file, line);
     }
 }
 
@@ -68,7 +68,7 @@ void ConvertPartialOverlay(int x, int y, int w, int h);
 
 /* Endian-converting reads. */
 
-#if SDL_BYTEORDER != SDL_LIL_ENDIAN  
+#if SDL_BYTEORDER != SDL_LIL_ENDIAN
 #define SWAPBLOCK16 for(a=0;a<(cnt>>1);a++) *(b+a)=SDL_Swap16(*(b+a));
 #define SWAPBLOCK32 for(a=0;a<(cnt>>2);a++) *(b+a)=SDL_Swap32(*(b+a));
 
@@ -76,40 +76,40 @@ ssize_t readLE16(int fd, void *buf, size_t cnt) {
     ssize_t r=read(fd,buf,cnt);
     K_UINT16 *b=buf;
     int a;
-    
+
     SWAPBLOCK16;
     return r;
-} 
+}
 ssize_t readLE32(int fd, void *buf, size_t cnt) {
     ssize_t r=read(fd,buf,cnt);
     K_UINT32 *b=buf;
     int a;
-        
+
     SWAPBLOCK32;
     return r;
-} 
+}
 
 ssize_t writeLE16(int fd, void *buf, size_t cnt) {
     ssize_t r;
     K_UINT16 *b=buf;
     int a;
-    
+
     SWAPBLOCK16;
     r=write(fd,buf,cnt);
     SWAPBLOCK16;
-    
+
     return r;
-} 
+}
 ssize_t writeLE32(int fd, void *buf, size_t cnt) {
     ssize_t r;
     K_UINT32 *b=buf;
     int a;
-        
+
     SWAPBLOCK32;
     r=write(fd,buf,cnt);
     SWAPBLOCK32;
     return r;
-} 
+}
 #endif
 
 K_INT32 readlong(unsigned char *t) {
@@ -172,7 +172,7 @@ void loadboard()
     K_UINT16 stack[LZW_STACK_SIZE];
     K_UINT16 stackp=0;
 
-#if SDL_BYTEORDER != SDL_LIL_ENDIAN  
+#if SDL_BYTEORDER != SDL_LIL_ENDIAN
     int a; K_UINT16 *b; size_t cnt;
 #endif
 
@@ -189,7 +189,7 @@ void loadboard()
 	} else {
 	    fprintf(stderr,"Can't find boards.dat.\n");
 	    SDL_Quit();
-	    exit(1);	    
+	    exit(1);
 	}
     } else {
 	if (((fil = open("boards.kzp",O_RDONLY|O_BINARY,0)) != -1)||
@@ -203,20 +203,20 @@ void loadboard()
 	    for(i=0;i<(boardnum<<1);i++)
 		templong += ((long)(boleng[i]+2));
 	    lseek(fil,templong,SEEK_SET);
-	    
+
 	    for(i=1;i<=256;i++) {
 		lzwbuf[i]=i&255;
 		lzwbuf2[i]=i;
 	    }
 	    lzwbuf2[0]=0;
 	    lzwbuf[0]=0;
-	    
+
 	    for(i=0;i<2;i++)
 	    {
 		compleng = boleng[(boardnum<<1)+i];
 		readLE16(fil,&strtot,2);
 		read(fil,&tempbuf[0],compleng);
-		
+
 		if (strtot > 0)
 		{
 		    tempbuf[compleng] = 0;
@@ -229,11 +229,11 @@ void loadboard()
 		    goalstr = 512;
 		    numbits = 9;
 		    do
-		    {		    
+		    {
 			dat=(((tempbuf[bytecnt2])|
 			      ((K_UINT16)(tempbuf[bytecnt2+1]))<<8)>>bitcnt)&
-			    ((1<<numbits)-1);    
-			
+			    ((1<<numbits)-1);
+
 /*		    dat=((*((K_UINT16 *)(tempbuf+bytecnt2)))
 		    >>bitcnt)&
 		    ((1<<numbits)-1);*/
@@ -242,32 +242,32 @@ void loadboard()
 				  ((1<<((bitcnt+numbits)&15))-1))<<
 				(16-bitcnt);
 			}
-			
+
 			bitcnt+=numbits;
 			bytecnt2+=bitcnt>>3;
 			bitcnt&=7;
-			
+
 			lzwbuf2[currstr]=dat;
-			
+
 			while(dat>=256) {
 			    stack[stackp++]=lzwbuf[dat];
-			    
+
 			    dat=lzwbuf2[dat];
 			}
-			
+
 			lzwbuf[currstr-1]=dat;
 			lzwbuf[currstr]=dat;
-			
+
 			dat=lzwbuf2[dat];
 			stack[stackp++]=dat;
-			
+
 			while(stackp>0) {
 			    stackp--;
 			    if (bytecnt1<4096)
 				((unsigned char *)(board[32*i]))[bytecnt1++]=
 				    stack[stackp];
 			}
-			
+
 			currstr++;
 			if (currstr == goalstr)
 			{
@@ -287,44 +287,53 @@ void loadboard()
 	    SDL_Quit();
 	    exit(1);
 	}
-	
+
     }
-#if SDL_BYTEORDER != SDL_LIL_ENDIAN  
+#if SDL_BYTEORDER != SDL_LIL_ENDIAN
     b=(K_UINT16 *)board;
     cnt=8192;
     SWAPBLOCK16;
 #endif
 
     /* Generate map texture... */
-    
+
     for(i=0;i<4096;i++)
 	walseg[map-1][i]=board[0][i]&255;
-    
+
     if (lab3dversion) {
 	spritepalette[0]=63;
 	spritepalette[1]=63;
 	spritepalette[2]=63;
     }
     glBindTexture(GL_TEXTURE_2D,texName[map-1]);
-    checkGLStatus();
-	
+#if DEBUG
+    checkGLStatus( __FILE__, __LINE__ );
+#endif
+
     TextureConvert(walseg[map-1], RGBATexture, bmpkind[map]);
-    
+
     glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_CLAMP);
     glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_CLAMP);
     glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,fullfilter);
-    
+
+#if !defined(OPENGLES)
     glPixelStorei(GL_UNPACK_ROW_LENGTH,0);
-    checkGLStatus();
+#endif
+#if DEBUG
+    checkGLStatus( __FILE__, __LINE__ );
+#endif
     glPixelStorei(GL_UNPACK_ALIGNMENT,1);
-    checkGLStatus();
-    
+#if DEBUG
+    checkGLStatus( __FILE__, __LINE__ );
+#endif
+
     BuildMipmaps((Uint32*)RGBATexture,64,64,1,10);
-    checkGLStatus();
-    
+#if DEBUG
+    checkGLStatus( __FILE__, __LINE__ );
+#endif
     /* Place warps and monsters... */
-    
+
     mnum = 0;
     if (lab3dversion)
 	for(i=0;i<63;i++)
@@ -537,7 +546,7 @@ K_INT16 ksaypan(K_UINT16 filenum,K_UINT16 pan) {
 
     sndfiloffs=readlong(SoundFile+(2+filenum*6));
     leng=readshort(SoundFile+(6+filenum*6));
-	    
+
     DumpSound(SoundFile+sndfiloffs, leng,((FeedPoint+blocksize)&65535),pan);
     SDL_UnlockMutex(soundmutex);
     return 0;
@@ -869,7 +878,7 @@ typedef struct imgcache {
 
 static imgcache* img_cache=NULL;
 
-
+#if !defined(OPENGLES)
 static inline int AverageColour32 (Uint32 * p, int x, int y, int w, int h)
 {
     int a, c, n = 0;
@@ -902,7 +911,6 @@ static inline int AverageColour32 (Uint32 * p, int x, int y, int w, int h)
 
 static inline void TextureAvg32 (Uint32 * pic, int w, int h)
 {
-
     Uint32 *f = pic;
 
     int x, y;
@@ -915,6 +923,7 @@ static inline void TextureAvg32 (Uint32 * pic, int w, int h)
 	    f++;
 	}
 }
+#endif
 
 #ifndef GL_EXT_texture_filter_anisotropic
 #define GL_TEXTURE_MAX_ANISOTROPY_EXT     0x84FE
@@ -922,11 +931,16 @@ static inline void TextureAvg32 (Uint32 * pic, int w, int h)
 #endif
 
 static void SetAnisotropic(void) {
-    checkGLStatus();
+#if defined(OPENGLES)
+    anisotropic=0;
+#else
 
+#if DEBUG
+    checkGLStatus( __FILE__, __LINE__ );
+#endif
     //#ifdef GL_EXT_texture_filter_anisotropic
-    GLfloat aniso; 
-    glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &aniso); 
+    GLfloat aniso;
+    glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &aniso);
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, aniso);
     if (glGetError()!=GL_NO_ERROR) {
 	fprintf(stderr,"Warning: Anisotropic filtering not supported by driver, using trilinear filtering.\n");
@@ -936,7 +950,7 @@ static void SetAnisotropic(void) {
     //anisotropic=0;
     //fprintf(stderr,"Warning: Anisotropic filtering not supported at compile time, using trilinear filtering.\n");
     //#endif
-
+#endif
 }
 
 #define USE_GLU_MIPMAPS
@@ -944,9 +958,14 @@ static void SetAnisotropic(void) {
 #ifdef USE_GLU_MIPMAPS
 
 void BuildMipmaps(Uint32* pix, int w, int h, int hasalpha, int maxlevel) {
+#if !defined(OPENGLES)
     if (hasalpha) TextureAvg32(pix,w,h);
     glPixelStorei (GL_UNPACK_ROW_LENGTH, w);
-    gluBuild2DMipmaps(GL_TEXTURE_2D,hasalpha?GL_RGBA:GL_RGB,w,h,GL_RGBA,GL_UNSIGNED_BYTE,pix);
+#else
+    GLint format = (hasalpha > 0) ? GL_RGBA : GL_RGB;
+
+    gluBuild2DMipmaps(GL_TEXTURE_2D,format,w,h,format,GL_UNSIGNED_BYTE,pix);
+#endif
 }
 #else
 
@@ -1048,9 +1067,11 @@ void BuildMipmaps(Uint32* pix, int w, int h, int hasalpha, int maxmips) {
     int level=0;
 
     while (1) {
+#if !defined(OPENGLES)
 	if (hasalpha) TextureAvg32(bufs[level],cw,ch);
 	glPixelStorei (GL_UNPACK_ROW_LENGTH, cw);
-	glTexImage2D (GL_TEXTURE_2D,level, format, cw, ch, 0, GL_RGBA,
+#endif
+	glTexImage2D (GL_TEXTURE_2D,level, format, cw, ch, 0, format,
 		      GL_UNSIGNED_BYTE, bufs[level]);
 	glFinish();
 	if (cw<=1 && ch<=1 ) break;
@@ -1073,18 +1094,21 @@ void BuildMipmaps(Uint32* pix, int w, int h, int hasalpha, int maxmips) {
 #endif /*USE_GLU_MIPMAPS*/
 
 
-
 void UploadTexture(GLuint tex, void* pixels, int w, int h,  int repx, int repy, int hasalpha, int minfilt, int magfilt) {
     int mipmaps=1;
 
     glBindTexture(GL_TEXTURE_2D, tex);
-    checkGLStatus ();
-
+#if DEBUG
+    checkGLStatus( __FILE__, __LINE__ );
+#endif
+#if !defined(OPENGLES)
     glPixelStorei (GL_UNPACK_SKIP_PIXELS, 0);
     glPixelStorei (GL_UNPACK_SKIP_ROWS, 0);
+#endif
     glPixelStorei (GL_UNPACK_ALIGNMENT, 1);
-    checkGLStatus ();
-
+#if DEBUG
+    checkGLStatus( __FILE__, __LINE__ );
+#endif
     switch (minfilt) {
     case GL_NEAREST:
     case GL_LINEAR:
@@ -1108,12 +1132,18 @@ void UploadTexture(GLuint tex, void* pixels, int w, int h,  int repx, int repy, 
     if (mipmaps) {
 	if (anisotropic)
 	    SetAnisotropic();
+
 	BuildMipmaps (pixels, w, h, hasalpha,20);
+
     } else {
-	glTexImage2D (GL_TEXTURE_2D,0, hasalpha?GL_RGBA:GL_RGB, w, h, 0, GL_RGBA,
-			   GL_UNSIGNED_BYTE, pixels);
+        GLint format = (hasalpha > 0) ? GL_RGBA : GL_RGB;
+
+        glTexImage2D (GL_TEXTURE_2D, 0, format, w, h, 0, format,
+                      GL_UNSIGNED_BYTE, pixels);
     }
-    checkGLStatus ();
+#if DEBUG
+    checkGLStatus( __FILE__, __LINE__ );
+#endif
 }
 
 int checkalpha(Uint32* tex, int w, int cw, int ch) {
@@ -1140,12 +1170,12 @@ imgcache* LoadImageCache(const char* fname, int repeatx, int minfilt, int magfil
 	fprintf(stderr,"Could not load image %s: %s\n",fname,SDL_GetError());
 	SDL_Quit();
 	exit(1);
-	
+
     }
 
     imgcache* new=(imgcache*)malloc(sizeof(imgcache));
     new->name=strdup(fname);
-    
+
     glGenTextures (1, &new->texnum);
 
     SDL_SetAlpha(tsurf,0,255);
@@ -1229,7 +1259,7 @@ void loadwalls(int replace)
     unsigned char bitcnt, numbits;
     wallparam wparams[numwalls];
     //imgcache* cache=NULL;
-    
+
     FILE* params;
 
     K_INT16 i, j, fil, bytecnt1, bytecnt2;
@@ -1274,7 +1304,7 @@ void loadwalls(int replace)
 		    cwparam=NULL;
 		}
 		//printf("section='%s'\n",lin);
-		
+
 	    }
 	    if ((tmp=strchr(lin,'='))) {
 		if (!cwparam) {
@@ -1342,7 +1372,7 @@ void loadwalls(int replace)
 		    exit(1);
 		}
 		//printf("key='%s' val='%s'\n",key,val);
-		
+
 	    }
 	}
 	fclose(params);
@@ -1370,7 +1400,7 @@ void loadwalls(int replace)
 
 	for(i=1;i<=256;i++) {
 	    lzwbuf[i]=i&255;
-	    lzwbuf2[i]=i;		    
+	    lzwbuf2[i]=i;
 	}
 	lzwbuf2[0]=0;
 	lzwbuf[0]=0;
@@ -1401,7 +1431,7 @@ void loadwalls(int replace)
 		{
 		    dat=(((tempbuf[bytecnt2])|
 			  ((K_UINT16)(tempbuf[bytecnt2+1]))<<8)>>bitcnt)&
-			((1<<numbits)-1);    
+			((1<<numbits)-1);
 /*		    dat=((*((K_UINT16 *)(tempbuf+bytecnt2)))
 		    >>bitcnt)&
 		    ((1<<numbits)-1);*/
@@ -1410,11 +1440,11 @@ void loadwalls(int replace)
 			      ((1<<((bitcnt+numbits)&15))-1))<<
 			    (16-bitcnt);
 		    }
-				    
+
 		    bitcnt+=numbits;
 		    bytecnt2+=bitcnt>>3;
 		    bitcnt&=7;
-				    
+
 		    lzwbuf2[currstr]=dat;
 
 		    while(dat>=256) {
@@ -1422,13 +1452,13 @@ void loadwalls(int replace)
 
 			dat=lzwbuf2[dat];
 		    }
-				    
+
 		    lzwbuf[currstr-1]=dat;
 		    lzwbuf[currstr]=dat;
-				    
+
 		    dat=lzwbuf2[dat];
 		    stack[stackp++]=dat;
-				    
+
 		    while(stackp>0) {
 			stackp--;
 			if (bytecnt1<4096)
@@ -1467,14 +1497,18 @@ void loadwalls(int replace)
 	    if ((i < 127) && ((i&1)==0)) {
 		if (debugmode)
 		    fprintf(stderr,"Trying to draw screen buffer.\n");
+#if !defined(OPENGLES)
 		glDrawBuffer(GL_BACK);
+#endif
 		fade(64+(i>>1));
 		SetVisibleScreenOffset(0);
 		if (debugmode)
 		    fprintf(stderr,"Screen buffer draw OK.\n");
 	    } else {
+#if !defined(OPENGLES)
 		glDrawBuffer(GL_FRONT);
-		
+#endif
+
 		if (i==128) {
 		    fade(63);
 		}
@@ -1484,16 +1518,16 @@ void loadwalls(int replace)
 
 	    if (lab3dversion) {
 		if (i < (rnumwalls>>1)) {
-		    screenbuffer[screenbufferwidth*219+j]=255;		
+		    screenbuffer[screenbufferwidth*219+j]=255;
 		}
 		else {
 		    j-=rnumwalls>>1;
 		    screenbuffer[screenbufferwidth*219+j]=0;
 		}
 		UploadPartialOverlay(j,219,1,1);
-	    } else {	    
+	    } else {
 		if (i < (rnumwalls>>1)) {
-		    screenbuffer[screenbufferwidth*199+j]=255;		
+		    screenbuffer[screenbufferwidth*199+j]=255;
 		}
 		else {
 		    j-=rnumwalls>>1;
@@ -1510,7 +1544,11 @@ void loadwalls(int replace)
 	       Yes, I know I'm too clever for my own good. */
 
 	    if ((i<127) && ((i&1)==0))
-		SDL_GL_SwapBuffers();
+#if !defined(OPENGLES)
+		    SDL_GL_SwapBuffers();
+#else
+		    EGL_SwapBuffers();
+#endif
 	    else
 		glFlush();
 	    cwparam=&wparams[i];
@@ -1521,7 +1559,7 @@ void loadwalls(int replace)
 		magfilt=GL_NEAREST;
 		minfilt=GL_NEAREST;
 	    }
-	    if (cwparam->bmpkind_override!=-1) 
+	    if (cwparam->bmpkind_override!=-1)
 		bmpkind[i+1] = cwparam->bmpkind_override;
 
 	    int wrapmode=(bmpkind[i+1]<2?1:0);
@@ -1548,56 +1586,64 @@ void loadwalls(int replace)
 		walltexcoord[i][1]= ((double)cwparam->tch/(double)cache->w);
 		//printf("TexCoords for %d: %d %d /%d %.6f %.6f\n",i,cwparam->tcl,cwparam->tch,cache->w,walltexcoord[i][0],walltexcoord[i][1]);
 	    } else {
-		walltexcoord[i][0]=0.0; 
+		walltexcoord[i][0]=0.0;
 		walltexcoord[i][1]=1.0;
 
 		glGenTextures(1,&texName[i]);
-		
+
 		glBindTexture(GL_TEXTURE_2D,texName[i]);
-		checkGLStatus();
-		
-		if (wrapmode) { 
+#if DEBUG
+		checkGLStatus( __FILE__, __LINE__ );
+#endif
+		if (wrapmode) {
 		    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_REPEAT);
 		} else {
 		    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_CLAMP);
 		}
 		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_CLAMP);
 		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,magfilt);
-		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,minfilt);	    
-		checkGLStatus();
-		
+		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,minfilt);
+#if DEBUG
+		checkGLStatus( __FILE__, __LINE__ );
+#endif
+#if !defined(OPENGLES)
 		glPixelStorei(GL_UNPACK_ROW_LENGTH,0);
-		checkGLStatus();
+#if DEBUG
+		checkGLStatus( __FILE__, __LINE__ );
+#endif
+#endif
 		glPixelStorei(GL_UNPACK_ALIGNMENT,1);
-		checkGLStatus();
-		
+#if DEBUG
+		checkGLStatus( __FILE__, __LINE__ );
+#endif
 		/* Replace door1 with colour test image. */
-		
-#ifdef COLOURTEST	
+
+#ifdef COLOURTEST
 		if (i==door1-1) {
 		    for(j=0;j<64;j++)
 			for(k=0;k<64;k++)
 			    walsegg[j*64+k]=((j>>2)<<4)|(k>>2);
 		}
 #endif
-		
+
 		TextureConvert(walsegg, RGBATexture, bmpkind[i+1]);
-		
+
 		if (debugmode)
 		    fprintf(stderr,"Trying to upload texture.\n");
-		
+
 		if (anisotropic)
 		    SetAnisotropic();
+
 		BuildMipmaps((Uint32*)RGBATexture,64,64,1,10);
-		
+
 		if (debugmode)
 		    fprintf(stderr,"Upload texture complete.\n");
-		
+
 		if (i==gameover-1) {
 		    /* Keep two copies of this; one for walls, the other for spinning
 		       overlay text. */
 		    glGenTextures(1,&gameoversprite);
-		    
+
 		    glBindTexture(GL_TEXTURE_2D,gameoversprite);
 		    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_CLAMP);
 		    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_CLAMP);
@@ -1605,14 +1651,14 @@ void loadwalls(int replace)
 		    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,
 				    fullfilter);
 		    TextureConvert(walsegg, RGBATexture, 4);
-		    
+
 		    if (anisotropic)
 			SetAnisotropic();
 		    BuildMipmaps((Uint32*)RGBATexture,64,64,1,10);
 		}
-	
-		checkGLStatus();
-	    
+#if DEBUG
+		checkGLStatus( __FILE__, __LINE__ );
+#endif
 		/*	    printf("Wall number %d:\n",i);
 
 for(k=0;k<64;k++) {
@@ -1631,7 +1677,7 @@ printf("\n");*/
 	exit(1);
     }
     free(RGBATexture);
-    
+
 
 //      Examine textures...
 /*
@@ -1639,11 +1685,14 @@ printf("\n");*/
 	glClear(GL_COLOR_BUFFER_BIT);
 	printf("Texture number %d.\n",i);
 	spridraw(180,50,512,i+1);
-//	SDL_GL_SwapBuffers();
+#if !defined(OPENGLES)
+	SDL_GL_SwapBuffers();
+#else
+	EGL_SwapBuffers();
+#endif
 	pressakey();
     }
 */
-
     if (lab3dversion) {
 	visiblescreenyoffset=0;
 	strcpy(textbuf,
@@ -1666,9 +1715,9 @@ printf("\n");*/
 	TransitionTexture(2,3,0);
 	TransitionTexture(6,7,8);
 	TransitionTexture(8,9,6);
-	
+
 	/* Set up end of game rainbow. */
-	
+
 	TransitionTexture(424,425,426);
 	TransitionTexture(47,424,425);
 	TransitionTexture(425,426,47);
@@ -1678,7 +1727,9 @@ printf("\n");*/
 	}
 
     }
+#if !defined(OPENGLES)
     glDrawBuffer(GL_BACK);
+#endif
 }
 
 #define COPYLINE \
@@ -1705,7 +1756,7 @@ void TransitionTexture(int left,int texture,int right) {
 
     f=walseg[texture];
 
-    for(x=0;x<64;x++) 
+    for(x=0;x<64;x++)
 	COPYLINE;
 
     f=walseg[right];
@@ -1715,32 +1766,42 @@ void TransitionTexture(int left,int texture,int right) {
     for(x=0;x<2;x++) {
 
 	glGenTextures(1,&splitTexName[texnum][x]);
-	
-	glBindTexture(GL_TEXTURE_2D,splitTexName[texnum][x]);
-	checkGLStatus();
 
+	glBindTexture(GL_TEXTURE_2D,splitTexName[texnum][x]);
+#if DEBUG
+	checkGLStatus( __FILE__, __LINE__ );
+#endif
 	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_CLAMP);
 	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_CLAMP);
 	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,partialfilter);
 	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,
-			fullfilter);	    
-	checkGLStatus();
-
+			fullfilter);
+#if DEBUG
+	checkGLStatus( __FILE__, __LINE__ );
+#endif
+#if !defined(OPENGLES)
 	glPixelStorei(GL_UNPACK_ROW_LENGTH,0);
-	checkGLStatus();
+#if DEBUG
+	checkGLStatus( __FILE__, __LINE__ );
+#endif
+#endif
 	glPixelStorei(GL_UNPACK_ALIGNMENT,1);
-	checkGLStatus();	
-
+#if DEBUG
+	checkGLStatus( __FILE__, __LINE__ );
+#endif
 	/* Add code here to upload two textures from texdata, one with cols
 	   0-63, other 2-65. */
 
+#if !defined(OPENGLES)
 	glPixelStorei(GL_UNPACK_SKIP_PIXELS,0);
 	glPixelStorei(GL_UNPACK_SKIP_ROWS,0);
 	glPixelStorei(GL_UNPACK_ROW_LENGTH,0);
-	
+#endif
+
 	BuildMipmaps((Uint32*)(texdata+x*512),64,64,1,10);
-	
-	checkGLStatus();
+#if DEBUG
+	checkGLStatus( __FILE__, __LINE__ );
+#endif
     }
     splitTexNum[texnum++]=texture;
 
@@ -1773,13 +1834,13 @@ void TextureConvert(unsigned char *from, unsigned char *to, Sint16 type) {
 
     int x,y;
 
-    for(x=0;x<64;x++) 
-	for(y=0;y<64;y++) {	    
+    for(x=0;x<64;x++)
+	for(y=0;y<64;y++) {
 	    if ((type>1)&&(*(f))==255) {
-		*(t++)=0;		
-		*(t++)=0;		
-		*(t++)=0;		
-		*(t++)=0;		
+		*(t++)=0;
+		*(t++)=0;
+		*(t++)=0;
+		*(t++)=0;
 	    } else {
 		*(t++)=spritepalette[(*f)*3]<<2;
 		*(t++)=spritepalette[(*f)*3+1]<<2;
@@ -1797,13 +1858,13 @@ void TextureConvert(unsigned char *from, unsigned char *to, Sint16 type) {
 
     int x,y;
 
-    for(x=0;x<64;x++) 
-	for(y=0;y<64;y++) {	    
+    for(x=0;x<64;x++)
+	for(y=0;y<64;y++) {
 	    if ((type>1)&&(*(f))==255) {
 		*(t++)=AverageColour(from,x,y,0);
 		*(t++)=AverageColour(from,x,y,1);
 		*(t++)=AverageColour(from,x,y,2);
-		*(t++)=0;		
+		*(t++)=0;
 	    } else {
 		*(t++)=spritepalette[(*f)*3]<<2;
 		*(t++)=spritepalette[(*f)*3+1]<<2;
@@ -1832,7 +1893,7 @@ K_INT16 loadgame(K_INT16 gamenum)
 	filename[3] = 'g', filename[4] = 'a', filename[5] = 'm';
 	filename[6] = 'e', filename[7] = gamenum+48;
 	filename[8] = '.', filename[9] = 'd', filename[10] = 'a';
-	filename[11] = 't', filename[12] = 0;	
+	filename[11] = 't', filename[12] = 0;
 
 	if((fil=open(filename,O_RDONLY|O_BINARY,0))==-1)
 	    return -1;
@@ -2004,7 +2065,7 @@ K_INT16 savegame(K_INT16 gamenum)
     filename[3] = 'g', filename[4] = 'a', filename[5] = 'm';
     filename[6] = 'e', filename[7] = gamenum+48;
     filename[8] = '.', filename[9] = 'd', filename[10] = 'a';
-    filename[11] = 't', filename[12] = 0;	
+    filename[11] = 't', filename[12] = 0;
 
     unlink(filename);
 
@@ -2027,9 +2088,9 @@ K_INT16 savegame(K_INT16 gamenum)
 	gamehead[gamenum][i] = hiscorenam[i];
     gamehead[gamenum][16] = hiscorenamstat;
 
-    writeshort(&(gamehead[gamenum][17]),boardnum);
-    writelong(&(gamehead[gamenum][19]),scorecount);
-    writelong(&(gamehead[gamenum][23]),scoreclock);
+    writeshort((unsigned char*)&(gamehead[gamenum][17]),boardnum);
+    writelong((unsigned char*)&(gamehead[gamenum][19]),scorecount);
+    writelong((unsigned char*)&(gamehead[gamenum][23]),scoreclock);
 
     gamexist[gamenum] = 1;
     writeLE16(fil,&board[0][0],8192);
@@ -2212,7 +2273,7 @@ void drawintroduction() {
 	if (pickskiltime < 0)
 	{
 	    SetVisibleScreenOffset(introplc);
-	
+
 /*	    if (dalasti < 424)
 	    {*/
 	    wipeoverlay(0,174,361,20);
@@ -2447,7 +2508,7 @@ void introduction(K_INT16 songnum)
 		settransferpalette();
 		loadgame(loadsavegameplace);
 		wipeoverlay(0,0,361,statusbaryoffset);
-		fade(63);		
+		fade(63);
 		return;
 	    }
 	    if (j == 8)
@@ -2497,7 +2558,11 @@ void introduction(K_INT16 songnum)
 	if ((dai >= 128) && (dalasti < 128))
 	    fade(63);
 	drawintroduction();
-	SDL_GL_SwapBuffers( );
+#if !defined(OPENGLES)
+	SDL_GL_SwapBuffers();
+#else
+	EGL_SwapBuffers();
+#endif
     }
 
     spriteyoffset=0;
@@ -2594,7 +2659,9 @@ void introduction(K_INT16 songnum)
     fadehurtval = 0;
     visiblescreenyoffset=0;
     wipeoverlay(0,0,361,statusbaryoffset);
+#if !defined(OPENGLES)
     glDrawBuffer(GL_BACK);
+#endif
     statusbaralldraw();
 }
 
@@ -2674,7 +2741,7 @@ K_INT16 loadmusic(char *filename)
 	return(-1);
     }
 
-    filoffs=readlong(buffer+8);
+    filoffs=readlong((unsigned char*)buffer+8);
 
     lseek(infile,filoffs,SEEK_SET);
     read(infile,&trinst[0],16);
@@ -2786,7 +2853,7 @@ void musicon()
     if (ksaystat == 0)
     {
 	lastTick=SDL_GetTicks();
-	if (timer==NULL) 
+	if (timer==NULL)
 	    timer=SDL_AddTimer(4,tickhandler, NULL);/* 250 Hz, should be 240.*/
     }
     SDL_UnlockMutex(soundmutex);
@@ -2834,7 +2901,7 @@ void updateclock(void) {
     Uint32 now;
 
     now=SDL_GetTicks();
-    
+
     while(((lastTick+(4+(tickFrac==0)))<=now)||(lastTick>now)) {
 	if (!soundtimer) clockspeed++;
 	if (musicsource!=2) ksmhandler();
@@ -3022,7 +3089,7 @@ void ksmhandler(void)
 	    }
 	    if (musicsource == 2)
 		for(i=0;i<bufnum;i+=2)
-		{		    
+		{
 		    outdata(0,databuf[i],databuf[i+1]);
 		}
 	}
@@ -3115,7 +3182,7 @@ void checkhitwall(K_UINT16 oposx,K_UINT16 oposy,K_UINT16 posix,
     if (!cliptowall) {
 	posx=posix;
 	posy=posiy;
-	if (posx<256) posx=256; 
+	if (posx<256) posx=256;
 	if (posy<256) posy=256;
 	if (posx>65536-256) posx=65536-256;
 	if (posy>65536-256) posy=65536-256;
@@ -3185,14 +3252,14 @@ void checkhitwall(K_UINT16 oposx,K_UINT16 oposy,K_UINT16 posix,
 	    if (tempbuf[((xpos+xdir)>>8)+((ypos&0xff00)>>2)]==0)
 		xpos+=xdir;
 	}
-	    
+
 	cnty+=yinc;
 	j=cnty>>8;
 	cnty&=255;
 	for(k=0;k<j;k++) {
 	    if (tempbuf[(xpos>>8)+(((ypos+ydir)&0xff00)>>2)]==0)
 		ypos+=ydir;
-	}    
+	}
     }
     posx = xpos + (((unsigned)x1)<<10);
     posy = ypos + (((unsigned)y1)<<10);
@@ -3300,7 +3367,11 @@ void wingame(K_INT16 episode)
 	    else
 		posy = starty+16384+512;
 	    picrot(posx,posy,posz,ang);
+#if !defined(OPENGLES)
 	    SDL_GL_SwapBuffers();
+#else
+	    EGL_SwapBuffers();
+#endif
 	    sortcnt = 0;
 	    SDL_LockMutex(soundmutex);
 	    SDL_LockMutex(timermutex);
@@ -3393,7 +3464,11 @@ void wingame(K_INT16 episode)
 		    finalisemenu();
 
 		    ksay(23);
+#if !defined(OPENGLES)
 		    SDL_GL_SwapBuffers();
+#else
+		    EGL_SwapBuffers();
+#endif
 		    pressakey();
 		    glClear(GL_COLOR_BUFFER_BIT);
 		    drawmenu(304,192,menu);
@@ -3407,7 +3482,11 @@ void wingame(K_INT16 episode)
 		    if (episode == 2) loadstory(-18);
 		    finalisemenu();
 		    settransferpalette();
+#if !defined(OPENGLES)
 		    SDL_GL_SwapBuffers();
+#else
+		    EGL_SwapBuffers();
+#endif
 		    pressakey();
 		}
 	    }
@@ -3497,7 +3576,11 @@ void winallgame()
 	    glClearColor( 0,0,0,0 );
 	    glClear(GL_COLOR_BUFFER_BIT);
 	    pictur(180,halfheight,4+(((int)revtotalclock)>>2),((int)((revtotalclock<<2))&2047)^2047,earth);
+#if !defined(OPENGLES)
 	    SDL_GL_SwapBuffers();
+#else
+	    EGL_SwapBuffers();
+#endif
 	}
 	else
 	{
@@ -3511,7 +3594,11 @@ void winallgame()
 	    loadstory(-17);
 	    finalisemenu();
 	    ksay(23);
+#if !defined(OPENGLES)
 	    SDL_GL_SwapBuffers();
+#else
+	    EGL_SwapBuffers();
+#endif
 	    pressakey();
 	    glClear(GL_COLOR_BUFFER_BIT);
 	    drawmenu(304,192,menu);
@@ -3524,7 +3611,11 @@ void winallgame()
 	    loadstory(-16);
 	    finalisemenu();
 	    settransferpalette();
+#if !defined(OPENGLES)
 	    SDL_GL_SwapBuffers();
+#else
+	    EGL_SwapBuffers();
+#endif
 	    pressakey();
 	    leavewin = 1;
 	}
@@ -3580,10 +3671,12 @@ void setdarkenedpalette() {
     if (ingame)
 	Red[255]=Green[255]=Blue[255]=Alpha[255]=0.0;
 
+#if !defined(OPENGLES)
     glPixelMapfv(GL_PIXEL_MAP_I_TO_R,256,Red);
     glPixelMapfv(GL_PIXEL_MAP_I_TO_G,256,Green);
     glPixelMapfv(GL_PIXEL_MAP_I_TO_B,256,Blue);
-    glPixelMapfv(GL_PIXEL_MAP_I_TO_A,256,Alpha);    
+    glPixelMapfv(GL_PIXEL_MAP_I_TO_A,256,Alpha);
+#endif
 
     ConvertPartialOverlay(0,0,360,240);
 }
@@ -3607,10 +3700,12 @@ void settransferpalette() {
     if (ingame)
 	Red[255]=Green[255]=Blue[255]=Alpha[255]=0.0;
 
+#if !defined(OPENGLES)
     glPixelMapfv(GL_PIXEL_MAP_I_TO_R,256,Red);
     glPixelMapfv(GL_PIXEL_MAP_I_TO_G,256,Green);
     glPixelMapfv(GL_PIXEL_MAP_I_TO_B,256,Blue);
-    glPixelMapfv(GL_PIXEL_MAP_I_TO_A,256,Alpha);    
+    glPixelMapfv(GL_PIXEL_MAP_I_TO_A,256,Alpha);
+#endif
 
     ConvertPartialOverlay(0,0,360,240);
 }
@@ -3634,10 +3729,12 @@ void updateoverlaypalette(K_UINT16 start,K_UINT16 amount,unsigned char *cols) {
     if (ingame)
 	Red[255]=Green[255]=Blue[255]=Alpha[255]=0.0;
 
+#if !defined(OPENGLES)
     glPixelMapfv(GL_PIXEL_MAP_I_TO_R,256,Red);
     glPixelMapfv(GL_PIXEL_MAP_I_TO_G,256,Green);
     glPixelMapfv(GL_PIXEL_MAP_I_TO_B,256,Blue);
-    glPixelMapfv(GL_PIXEL_MAP_I_TO_A,256,Alpha); 
+    glPixelMapfv(GL_PIXEL_MAP_I_TO_A,256,Alpha);
+#endif
 
     ConvertPartialOverlay(0,0,360,240);
 }
@@ -3684,7 +3781,7 @@ void showcompass(K_INT16 compang)
     statusbardraw((i&2)<<4,((i&1)<<5)+2,29,29,238,1+statusbaryoffset,(i>>2)+compassplc);
 }
 
-/* Load a GIF. Violate a patent. 
+/* Load a GIF. Violate a patent.
    0-2 = GIFs in LAB3D.KZP, -1 = lab3d.gif, -2 to -4 = endn.gif. */
 K_INT16 kgif(K_INT16 filenum)
 {
@@ -3788,7 +3885,7 @@ K_INT16 kgif(K_INT16 filenum)
 	    numpals = numcols+numcols+numcols;
 	    for(j=0;j<numpals;j++)
 		palette[j]=tempbuf[j+gifdatacnt];
-			
+
 	    gifdatacnt += numpals;
 	}
 	gifdatacnt++;
@@ -3799,7 +3896,7 @@ K_INT16 kgif(K_INT16 filenum)
 	bitcnt = 0;
 	for(i=1;i<=numcols;i++) {
 	    lzwbuf[i]=i&255;
-	    lzwbuf2[i]=i;		    
+	    lzwbuf2[i]=i;
 	}
 	lzwbuf2[0]=0;
 	lzwbuf[0]=0;
@@ -3830,11 +3927,11 @@ K_INT16 kgif(K_INT16 filenum)
 		      ((1<<((bitcnt+numbits)&15))-1))<<
 		    (16-bitcnt);
 	    }
-		    
+
 	    bitcnt+=numbits;
 	    bytecnt+=bitcnt>>3;
 	    bitcnt&=7;
-		    
+
 	    if (bytecnt > blocklen-3)
 	    {
 		writeshort((unsigned char *)lincalc,
@@ -3863,7 +3960,7 @@ K_INT16 kgif(K_INT16 filenum)
 		    memcpy(((unsigned char *)lincalc)+i+k,
 			   tempbuf,
 			   ((gifdatacnt=blocklen-k)+1)&~1);
-					
+
 		}
 		bytecnt = 0;
 		blocklen += i;
@@ -3881,20 +3978,20 @@ K_INT16 kgif(K_INT16 filenum)
 		numbitgoal = (numcols<<1);
 	    }
 	    else
-	    {		
+	    {
 		lzwbuf2[currstr]=dat;
 		while(dat>=firstring) {
 		    stack[stackp++]=lzwbuf[dat];
 
 		    dat=lzwbuf2[dat];
 		}
-				    
+
 		lzwbuf[currstr-1]=dat&255;
 		lzwbuf[currstr]=dat&255;
-				    
+
 		dat=lzwbuf2[dat];
 		stack[stackp++]=dat;
-				    
+
 		while(stackp>0) {
 		    stackp--;
 
@@ -3921,68 +4018,100 @@ K_INT16 kgif(K_INT16 filenum)
 /* Upload rectangular part of overlay from memory to specified texture. */
 
 void UploadPartialOverlayToTexture(int x,int y,int dx,int dy,int w,int h,
-				   GLuint tex,int create) {
+                   GLuint tex,int create) {
+#ifdef OPENGLES
+    int yy;
+#endif
+
     glBindTexture(GL_TEXTURE_2D,tex);
-    checkGLStatus();
-    
+#if DEBUG
+    checkGLStatus( __FILE__, __LINE__ );
+#endif
+#if !defined(OPENGLES)
     glPixelStorei(GL_UNPACK_ROW_LENGTH,screenbufferwidth);
     glPixelStorei(GL_UNPACK_SKIP_PIXELS,x);
     glPixelStorei(GL_UNPACK_SKIP_ROWS,y);
+#endif
     glPixelStorei(GL_UNPACK_ALIGNMENT,1);
-    checkGLStatus();
-
+#if DEBUG
+    checkGLStatus( __FILE__, __LINE__ );
+#endif
     if (create) {
-	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_CLAMP);
-	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_CLAMP);
-	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,partialfilter);
-	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,partialfilter);
+    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_CLAMP);
+    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_CLAMP);
+    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,partialfilter);
+    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,partialfilter);
     }
 
     //glPixelTransferi(GL_MAP_COLOR,GL_TRUE);
 
     if (debugmode)
-	fprintf(stderr,"Partial overlay upload (%d %d %d %d)... ",
-		w,h,dx,dy);
+    fprintf(stderr,"Partial overlay upload (%d %d %d %d)... ",
+        w,h,dx,dy);
 
 
-    if (create) {
+    if (create)
+    {
 	if (debugmode)
 	    fprintf(stderr,"(create) ");
+#ifdef OPENGLES
 	glTexImage2D(GL_TEXTURE_2D,0,colourformat,w,
-		     h,0,GL_RGBA,
-		     GL_UNSIGNED_BYTE,
-		     screenbuffer32);
-    } else {
-	glTexSubImage2D(GL_TEXTURE_2D,0,dx,dy,w,h,
-			GL_RGBA,
-			GL_UNSIGNED_BYTE,
-			screenbuffer32);
+		h,0,colourformat,
+		GL_UNSIGNED_BYTE,
+		NULL);
+#else
+	glTexImage2D(GL_TEXTURE_2D,0,colourformat,w,
+		h,0,GL_RGBA,
+		GL_UNSIGNED_BYTE,
+		screenbuffer32);
+#endif
     }
-    checkGLStatus();
+#if !defined(OPENGLES)
+    else
+    {
+        glTexSubImage2D(GL_TEXTURE_2D,0,dx,dy,w,h,
+            GL_RGBA,
+            GL_UNSIGNED_BYTE,
+            screenbuffer32);
+    }
+#endif
+
+#ifdef OPENGLES
+    for( yy = 0; yy < h; yy++ )
+    {
+        char *row = (char*)screenbuffer32 + ((yy + y)*screenbufferwidth + x) * 4;
+        glTexSubImage2D( GL_TEXTURE_2D, 0, dx, dy+yy, w, 1, GL_RGBA, GL_UNSIGNED_BYTE, row );
+    }
+#endif
+#if DEBUG
+    checkGLStatus( __FILE__, __LINE__ );
+#endif
     if (debugmode)
 	fprintf(stderr,"done.\n");
     //glPixelTransferi(GL_MAP_COLOR,GL_FALSE);
+#if !defined(OPENGLES)
     glPixelStorei(GL_UNPACK_SKIP_PIXELS,0);
     glPixelStorei(GL_UNPACK_SKIP_ROWS,0);
     glPixelStorei(GL_UNPACK_ROW_LENGTH,0);
+#endif
 }
 
 void ConvertPartialOverlay(int sx, int sy, int w, int h) {
 
-    
+
     unsigned char *f=&screenbuffer[sx+screenbufferwidth*sy],*t=(unsigned char*)&screenbuffer32[sx+screenbufferwidth*sy];
 
     int x,y;
     int skip=screenbufferwidth-w;
 
     //printf("sx=%d, sy=%d, w=%d, h=%d, spos=%d skip=%d\n",sx,sy,w,h,sx+screenbufferwidth*sy,skip);
-    for(y=0;y<h;y++,f+=skip,t+=(skip*4)) 
+    for(y=0;y<h;y++,f+=skip,t+=(skip*4))
 	for(x=0;x<w;x++) {
 	    if ((*(f))==255 && ingame) {
-		*(t++)=0;		
-		*(t++)=0;		
-		*(t++)=0;		
-		*(t++)=0;		
+		*(t++)=0;
+		*(t++)=0;
+		*(t++)=0;
+		*(t++)=0;
 	    } else {
 		*(t++)=ipalr[*f];
 		*(t++)=ipalg[*f];
@@ -4007,7 +4136,7 @@ void UploadPartialOverlay(int x,int y,int w,int h) {
     if (largescreentexture) {
 	/* On my nVidia Riva TNT, uploading 1 pixel high subimages is very slow
 	   (driver bug?), so I upload an extra row. Very odd. Probably a driver
-	   issue (nVidia driver version 1.0-1541 on Linux 2.4.4-4GB). 
+	   issue (nVidia driver version 1.0-1541 on Linux 2.4.4-4GB).
 
 	   This only seems to affect the large textures. Very odd. */
 
@@ -4029,7 +4158,7 @@ void UploadPartialOverlay(int x,int y,int w,int h) {
 		rr=lr+w-1;
 		tr=y-62*i;
 		br=tr+h-1;
-		
+
 		if (rr<0) continue;
 		if (lr>63) continue;
 		if (br<0) continue;
@@ -4085,9 +4214,9 @@ void ShowPartialOverlay(int x,int y,int w,int h,int statusbar) {
 	if (y<0) {h+=y; y=0;}
 	if ((w<=0)||(h<=0)) return;
 	y+=visiblescreenyoffset;
-    }  
+    }
 
-    if (mixing) 
+    if (mixing)
 	glEnable(GL_BLEND);
     else {
 	glAlphaFunc(GL_GEQUAL,0.99);
@@ -4124,17 +4253,18 @@ void ShowPartialOverlay(int x,int y,int w,int h,int statusbar) {
 //    gluOrtho2D(0.0, 360.0, 0.0, 240.0);
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
-	
+
     if (largescreentexture) {
 	tx1=((float)x)/(float)(screenbufferwidth);
 	tx2=((float)(x+w))/(float)screenbufferwidth;
-	
+
 	ty1=((float)y)/(float)(screenbufferheight);
 	ty2=((float)(y+h))/(float)screenbufferheight;
 
 	y-=visiblescreenyoffset;
-	
+
 	glBindTexture(GL_TEXTURE_2D,screenbuffertexture);
+#if !defined(OPENGLES)
 	glBegin(GL_QUADS);
 	glColor3f(redfactor,greenfactor,bluefactor);
 	glTexCoord2f(tx1,ty2);
@@ -4146,6 +4276,33 @@ void ShowPartialOverlay(int x,int y,int w,int h,int statusbar) {
 	glTexCoord2f(tx1,ty1);
 	glVertex2s(x,y);
 	glEnd();
+#else
+	GLfloat vtx[] = {
+	  x   ,y+h,
+	  x+w ,y+h,
+	  x+w ,y  ,
+	  x   ,y
+	};
+
+	GLfloat tex[] = {
+	  tx1,ty2,
+	  tx2,ty2,
+	  tx2,ty1,
+	  tx1,ty1
+	};
+
+	glEnableClientState(GL_VERTEX_ARRAY);
+	glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+
+ 	glColor4f(redfactor,greenfactor,bluefactor,1.0f);
+
+	glVertexPointer(2, GL_FLOAT, 0, vtx);
+	glTexCoordPointer(2, GL_FLOAT, 0, tex);
+    glDrawArrays( GL_TRIANGLE_FAN, 0, 4 );
+
+	glDisableClientState(GL_VERTEX_ARRAY);
+	glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+#endif
     } else {
 	left=(x-1)/62;
 	if (left<0) left=0;
@@ -4164,7 +4321,7 @@ void ShowPartialOverlay(int x,int y,int w,int h,int statusbar) {
 		rr=lr+w-1;
 		tr=y-62*i;
 		br=tr+h-1;
-		
+
 		if (rr<(j>0)) continue;
 		if (lr>(63-(j<5))) continue;
 		if (br<(i>0)) continue;
@@ -4177,7 +4334,7 @@ void ShowPartialOverlay(int x,int y,int w,int h,int statusbar) {
 
 		tx1=((float)lr)/64.0;
 		tx2=((float)(rr+1))/64.0;
-		
+
 		ty1=((float)tr)/64.0;
 		ty2=((float)(br+1))/64.0;
 
@@ -4187,6 +4344,7 @@ void ShowPartialOverlay(int x,int y,int w,int h,int statusbar) {
 		}
 
 		glBindTexture(GL_TEXTURE_2D,screenbuffertextures[i*6+j]);
+#if !defined(OPENGLES)
 		glBegin(GL_QUADS);
 		glColor3f(redfactor,greenfactor,bluefactor);
 		glTexCoord2f(tx1,ty2);
@@ -4198,6 +4356,33 @@ void ShowPartialOverlay(int x,int y,int w,int h,int statusbar) {
 		glTexCoord2f(tx1,ty1);
 		glVertex2s(lr+62*j,tr+62*i-visiblescreenyoffset);
 		glEnd();
+#else
+		GLfloat vtx[] = {
+		  lr+62*j,br+1+62*i-visiblescreenyoffset,
+		  rr+1+62*j,br+1+62*i-visiblescreenyoffset,
+		  rr+1+62*j,tr+62*i-visiblescreenyoffset,
+		  lr+62*j,tr+62*i-visiblescreenyoffset
+		};
+
+		GLfloat tex[] = {
+		  tx1,ty2,
+		  tx2,ty2,
+		  tx2,ty1,
+		  tx1,ty1
+		};
+
+		glEnableClientState(GL_VERTEX_ARRAY);
+		glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+
+		glColor4f(redfactor,greenfactor,bluefactor,1.0f);
+
+		glVertexPointer(2, GL_FLOAT, 0, vtx);
+		glTexCoordPointer(2, GL_FLOAT, 0, tex);
+        glDrawArrays( GL_TRIANGLE_FAN, 0, 4 );
+
+		glDisableClientState(GL_VERTEX_ARRAY);
+		glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+#endif
 
 		if (debugmode)
 		    fprintf(stderr,"done.\n");
@@ -4208,8 +4393,9 @@ void ShowPartialOverlay(int x,int y,int w,int h,int statusbar) {
 	glDisable(GL_BLEND);
     else
 	glDisable(GL_ALPHA_TEST);
-    checkGLStatus();
-
+#if DEBUG
+    checkGLStatus( __FILE__, __LINE__ );
+#endif
     if (statusbar==1) {
 	for(i=0;i<(virtualscreenwidth-319)/2;i+=20) {
 	    ShowPartialOverlay(340+i,statusbaryoffset,20,statusbaryvisible,2);
@@ -4520,7 +4706,7 @@ void drawscorebox() {
     float ox=0.0,oy=0.0,od;
     unsigned char *orgl;
     unsigned char *org;
-    
+
     unsigned char *dest;
 
     od=64.0/320.0;
@@ -4559,7 +4745,9 @@ void hiscorecheck()
     if (((fil = open("hiscore.dat",O_RDWR|O_BINARY,0)) == -1)&&
 	((fil = open("HISCORE.DAT",O_RDWR|O_BINARY,0)) == -1))
 	return;
+#if !defined(OPENGLES)
     glDrawBuffer(GL_FRONT);
+#endif
     wipeoverlay(0,0,361,statusbaryoffset);
     lseek(fil,(long)(boardnum<<7),SEEK_SET);
     read(fil,&tempbuf[0],128);
@@ -4786,7 +4974,10 @@ void hiscorecheck()
     textprint(180-(strlen(textbuf)<<2),135+1,(char)65);
     finalisemenu();
     glFlush();
+#if !defined(OPENGLES)
     glDrawBuffer(GL_BACK);
+#endif
+
     while ((keystatus[1] == 0) && (keystatus[57] == 0) && (keystatus[28] == 0) && (bstatus == 0)) {
 	PollInputs();
 	SDL_Delay(10);
@@ -4825,7 +5016,7 @@ void getname()
 
     /* Apparently, the program is supposed to remember the name you used last
        time you played and allow you to modify that.
-      
+
        In practice, this code is so buggy and useless that I think it's best to
        just leave it out. */
 
@@ -4851,13 +5042,17 @@ void getname()
       }*/
 
     ch = 0;
-    finalisemenu();    
+    finalisemenu();
+#if !defined(OPENGLES)
     glDrawBuffer(GL_FRONT);
+#endif
     sprintf(&textbuf[0],"Please type your name!");
 
     textprint(180-(strlen(textbuf)<<2),135+1,(char)161);
     ch = 0;
+#if !defined(EGL_RAW)
     SDL_EnableUNICODE(1);
+#endif
     while ((ch != 13) && (ch != 27))
     {
 	while ((ch=getkeypress()) == 0)
@@ -4902,7 +5097,9 @@ void getname()
 		j++;
 	}
     }
+#if !defined(EGL_RAW)
     SDL_EnableUNICODE(0);
+#endif
     for(i=0;i<256;i++)
 	keystatus[i] = 0;
     hiscorenam[j] = 0;
@@ -4989,7 +5186,7 @@ unsigned char BMPHeader[54]={0x42,0x4d,0,0,0,0,0,0,
 			     0,0,0,0,0,0};
 
 /* Write a DWORD (32-bit int) to BMP header. */
-			     
+
 void bmpheaderwrite(int offset, K_UINT32 value) {
     int a;
 
@@ -5002,7 +5199,7 @@ void bmpheaderwrite(int offset, K_UINT32 value) {
 void screencapture()
 {
     char filename[15];
-    
+
     unsigned char *screen=malloc(3*screenwidth*screenheight);
 
     char success=0;
@@ -5021,7 +5218,7 @@ void screencapture()
 
     bmpheaderwrite(0x12,screenwidth);
     bmpheaderwrite(0x16,screenheight);
-	
+
     if (screen!=NULL) {
 	glReadPixels(0,0,screenwidth,screenheight,GL_BGR,GL_UNSIGNED_BYTE,
 		     screen);
@@ -5090,18 +5287,26 @@ K_INT16 mainmenu()
     if (sortcnt == -1) {
 	/* Emulating the original a bit too closely, this... */
 
+#if !defined(OPENGLES)
 	glDrawBuffer(GL_BACK);
+#endif
 	spriteyoffset=20;
 	drawintroduction();
 	spriteyoffset=0;
+#if !defined(OPENGLES)
 	SDL_GL_SwapBuffers();
+#else
+	EGL_SwapBuffers();
+#endif
     } else {
+#if !defined(OPENGLES)
 	glDrawBuffer(GL_FRONT);
+#endif
 	ShowStatusBar();
     }
-
+#if !defined(OPENGLES)
     glDrawBuffer(GL_FRONT);
-
+#endif
     done = 0;
     if (sortcnt != -1)
     {
@@ -5158,29 +5363,53 @@ K_INT16 mainmenu()
 	    {
 		/* Redraw whatever was beneath the menu. Double buffer to
 		   avoid annoying flicker. */
-		if (sortcnt == -1) {		    
+		if (sortcnt == -1) {
 		    spriteyoffset=20;
+#if !defined(OPENGLES)
 		    glDrawBuffer(GL_BACK);
-		    checkGLStatus();
+#endif
+#if DEBUG
+		    checkGLStatus( __FILE__, __LINE__ );
+#endif
 		    kgif(1);
 		    drawintroduction();
 		    spriteyoffset=0;
 		    drawmainmenu();
-		    checkGLStatus();
+#if DEBUG
+		    checkGLStatus( __FILE__, __LINE__ );
+#endif
+#if !defined(OPENGLES)
 		    SDL_GL_SwapBuffers();
+#else
+		    EGL_SwapBuffers();
+#endif
+#if !defined(OPENGLES)
 		    glDrawBuffer(GL_FRONT);
+#endif
 		}
 		else {
+#if !defined(OPENGLES)
 		    glDrawBuffer(GL_BACK);
-		    checkGLStatus();
+#endif
+#if DEBUG
+		    checkGLStatus( __FILE__, __LINE__ );
+#endif
 		    wipeoverlay(0,0,361,statusbaryoffset);
 		    statusbaralldraw();
 		    if (compass>0) showcompass(ang);
 		    picrot(posx,posy,posz,ang);
 		    drawmainmenu();
-		    checkGLStatus();
+#if DEBUG
+		    checkGLStatus( __FILE__, __LINE__ );
+#endif
+#if !defined(OPENGLES)
 		    SDL_GL_SwapBuffers();
+#else
+		    EGL_SwapBuffers();
+#endif
+#if !defined(OPENGLES)
 		    glDrawBuffer(GL_FRONT);
+#endif
 		}
 	    }
 	}
@@ -5194,21 +5423,25 @@ K_INT16 mainmenu()
     j = mainmenuplace;
     if (mainmenuplace < 0)
 	mainmenuplace = (-mainmenuplace)-1;
+#if !defined(OPENGLES)
     glDrawBuffer(GL_BACK);
+#endif
     return(j);
 }
 
 /* Get a selection from a menu with totselectors choices, defaulting to
    nowselector, at screen position (xoffs,yoffs). */
 
-K_INT16 getselection(K_INT16 xoffs, K_INT16 yoffs, K_INT16 nowselector, 
+K_INT16 getselection(K_INT16 xoffs, K_INT16 yoffs, K_INT16 nowselector,
 		     K_INT16 totselectors)
 {
     K_INT16 animater6, n, esckeystate;
     int mousx, mousy;
     K_INT16 bstatus, obstatus;
 
+#if !defined(OPENGLES)
     glDrawBuffer(GL_FRONT);
+#endif
     if (vidmode == 0)
 	n = 0;
     else
@@ -5232,6 +5465,10 @@ K_INT16 getselection(K_INT16 xoffs, K_INT16 yoffs, K_INT16 nowselector,
     mousy = 0;
     while (esckeystate == 0)
     {
+#ifdef OPENGLES
+	EGL_SwapBuffers();	// Makes the menu show up with the selector
+#endif
+
 	PollInputs();
 	animater6++;
 	if (animater6 == 6)
@@ -5347,7 +5584,7 @@ void drawmenu(K_INT16 xsiz, K_INT16 ysiz, K_INT16 walnume)
 	for(i=0;i<menuwidth;i++)
 	    *(buf+=screenbufferwidth)=239;
 	UploadPartialOverlay(menuleft,menutop,menuwidth,menuheight);
-	
+
 	return;
     }
 
@@ -5451,6 +5688,10 @@ void bigstorymenu()
 		quitstat = 1;
 	}
 	ksay(27);
+
+#ifdef OPENGLES
+	EGL_SwapBuffers();	// Makes the menu show up with the selector
+#endif
     }
 }
 
@@ -5505,7 +5746,9 @@ void sodamenu()
     K_INT16 n, valid;
 
     wipeoverlay(0,0,361,statusbaryoffset);
+#if !defined(OPENGLES)
     glDrawBuffer(GL_FRONT);
+#endif
     ototclocker = totalclock;
     if (vidmode == 0)
 	n = 0;
@@ -5656,7 +5899,9 @@ void sodamenu()
     SDL_LockMutex(timermutex);
     clockspeed = 0;
     SDL_UnlockMutex(timermutex);
+#if !defined(OPENGLES)
     glDrawBuffer(GL_BACK);
+#endif
     wipeoverlay(0,0,361,statusbaryoffset);
     linecompare(statusbar);
 }
@@ -5699,14 +5944,14 @@ void orderinfomenu() {
     strcpy(textbuf,
 	   "Ken Silverman's official web site:");
     textprint(30,146,48);
-    
+
     strcpy(textbuf,
 	   "http://www.advsys.net/ken");
     textprint(30,156,48);
 
     finalisemenu();
     pressakey();
-    
+
 }
 
 /* Save/load game selector. */
@@ -5755,7 +6000,7 @@ K_INT16 loadsavegamemenu(K_INT16 whichmenu)
 		filename[3] = 'g', filename[4] = 'a', filename[5] = 'm';
 		filename[6] = 'e', filename[7] = j+48;
 		filename[8] = '.', filename[9] = 'd', filename[10] = 'a';
-		filename[11] = 't', filename[12] = 0;	
+		filename[11] = 't', filename[12] = 0;
 		if((fil=open(filename,O_RDONLY|O_BINARY,0))!=-1)
 		{
 		    gamexist[j] = 1;
@@ -5789,7 +6034,7 @@ K_INT16 loadsavegamemenu(K_INT16 whichmenu)
 	    textbuf[19] = 32;
 	    textbuf[20] = 32;
 	    k = j*27;
-	    templong=readlong(&gamehead[j][19]);
+	    templong=readlong((unsigned char*)&gamehead[j][19]);
 //	    templong=*((K_INT32 *)(&gamehead[j][19]));
 
 	    textbuf[21] = (char)((templong/100000L)%10L)+48;
@@ -5803,7 +6048,7 @@ K_INT16 loadsavegamemenu(K_INT16 whichmenu)
 	    while ((textbuf[k] == 48) && (k < 26))
 		textbuf[k++] = 32;
 	    k = j*27;
-	    templong=readlong(&gamehead[j][23]);
+	    templong=readlong((unsigned char*)&gamehead[j][23]);
 //	    templong=*((K_INT32 *)(&gamehead[j][23]));
 
 	    templong /= 240;
@@ -5965,12 +6210,16 @@ void copyslots(K_INT16 slotnum)
 	    l[k+448]=tempbuf[(i<<8)+(j<<3)+7];
 	}
     glBindTexture(GL_TEXTURE_2D,texName[slotnum-1]);
-    checkGLStatus();
+#if DEBUG
+    checkGLStatus( __FILE__, __LINE__ );
+#endif
 
     TextureConvert(l, RGBATexture, bmpkind[slotnum]);
 
     BuildMipmaps((Uint32*)RGBATexture,64,64,1,10);
-    checkGLStatus();
+#if DEBUG
+    checkGLStatus( __FILE__, __LINE__ );
+#endif
     free(RGBATexture);
 }
 
@@ -5992,13 +6241,15 @@ void updatemap() {
     unsigned char *RGBATexture=malloc(64*64*4);
 
     glBindTexture(GL_TEXTURE_2D,texName[map-1]);
-    checkGLStatus();
-
+#if DEBUG
+    checkGLStatus( __FILE__, __LINE__ );
+#endif
     TextureConvert(walseg[map-1], RGBATexture, bmpkind[map]);
 
     BuildMipmaps((Uint32*)RGBATexture,64,64,1,10);
-
-    checkGLStatus();
+#if DEBUG
+    checkGLStatus( __FILE__, __LINE__ );
+#endif
     free(RGBATexture);
 }
 
@@ -6008,26 +6259,38 @@ void updategameover() {
     unsigned char *RGBATexture=malloc(64*64*4);
 
     glBindTexture(GL_TEXTURE_2D,texName[gameover-1]);
-    checkGLStatus();
-
+#if DEBUG
+    checkGLStatus( __FILE__, __LINE__ );
+#endif
     TextureConvert(walseg[gameover-1], RGBATexture, bmpkind[gameover]);
 
     BuildMipmaps((Uint32*)RGBATexture,64,64,1,10);
 
-    checkGLStatus();
+#if DEBUG
+    checkGLStatus( __FILE__, __LINE__ );
+#endif
     free(RGBATexture);
 }
 
 /* Get keypress in Unicode form. */
 
 Uint16 getkeypress() {
+#if !defined(EGL_RAW)
     SDL_Event event;
+#endif
     int sk;
 
+#if defined(WIZ) || defined(CAANOO)
+    do {
+	 sk = GetButtonsWizCaanoo();
+    } while ( sk == 0 );
+
+    return sk;
+#else
     while(SDL_PollEvent(&event))
     {
 	switch(event.type)
-	{	      
+	{
 	    case SDL_QUIT:
 		quitgame=1;
 	    case SDL_KEYDOWN:
@@ -6051,6 +6314,7 @@ Uint16 getkeypress() {
 		break;
 	}
     }
+#endif
     if (quitgame) quit();
     return 0;
 }
@@ -6058,15 +6322,21 @@ Uint16 getkeypress() {
 /* Poll for keyboard input or quit command. */
 
 void PollInputs() {
-    SDL_Event event;
+#if !defined(EGL_RAW)
     int sk;
-    static int i=0;
+    SDL_Event event;
+#endif
+    //static int i=0;
+
     //printf ("poll %d\n",i++);
+#if defined(WIZ) || defined(CAANOO)
+    GetButtonsWizCaanoo();
+#else
     while(SDL_PollEvent(&event))
     {
 	//printf ("event type=%d\n",event.type);
 	switch(event.type)
-	{	      
+	{
 	    case SDL_QUIT:
 		quitgame=1;
 	    case SDL_JOYBUTTONDOWN:
@@ -6090,7 +6360,7 @@ void PollInputs() {
 		}
 		if (sk<SDLKEYS)
 		    newkeystatus[sk]=1;
-		break;		
+		break;
 	    case SDL_KEYUP:
 		sk=event.key.keysym.sym;
 		if ((sk<SDLKEYS)&&(PCkey[sk]>=0)) {
@@ -6103,6 +6373,7 @@ void PollInputs() {
 		break;
 	}
     }
+#endif
     if (quitgame) quit();
 }
 
@@ -6160,7 +6431,7 @@ void quit() {
 
 	SDL_CloseAudio();
 	free(SoundBuffer);
-    }    
+    }
 
     free(screenbuffer);
 
@@ -6171,7 +6442,7 @@ void quit() {
 
 	/* Print shareware message:
 	   Dump 16K of segment walseg[endtext-1] to text mode screen,
-	   move cursor to start of line 0x16 (0 is top). 
+	   move cursor to start of line 0x16 (0 is top).
 
 	   Removed to avoid confusing people (and to save me the trouble
 	   of parsing a CGA colour text screen). */
@@ -6184,8 +6455,15 @@ void quit() {
     if (joystat==0)
 	SDL_JoystickClose(joystick);
 
+#ifdef OPENGLES
+    EGL_Close();
+#endif
+#if defined(WIZ) || defined(CAANOO)
+    CloseWizCaanoo();
+#endif
+
     SDL_Quit();
-    
+
     exit(0);
 }
 
@@ -6243,7 +6521,7 @@ void randoinsts()
 
 void drawinputbox() {
     int k;
-    
+
     menuing=1; menuleft=84; menutop=127;
     menuwidth=192; menuheight=64;
     statusbardraw(0, 0, 57, 64, 84-20, 127, lab3dversion?76:scorebox);

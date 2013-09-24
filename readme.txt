@@ -13,6 +13,10 @@ FreeBSD 4.7.
 
 Improvements over the original Ken's Labyrinth:
 
+In addition to the changes below
+OpenGLES support and hardware support for wiz and caanoo.
+
+
 - Runs natively on 32-bit Windows or Unix.
 - Supports big-endian CPUs.
 - Uses OpenGL to provide hardware accelerated, anti-aliased graphics with

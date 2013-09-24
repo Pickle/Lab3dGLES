@@ -12,8 +12,10 @@ void initialize()
     K_UINT16 l;
     char *v;
     time_t tnow;
+#if !defined(EGL_RAW)
     SDL_Surface *screen;
     SDL_Surface *icon;
+#endif
 
     SDL_AudioSpec want;
     FILE *file;
@@ -35,6 +37,7 @@ void initialize()
     soundmutex=SDL_CreateMutex();
     timermutex=SDL_CreateMutex();
 
+#if !defined(OPENGLES)
     SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8);
     SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE,8);
     SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE,8);
@@ -45,49 +48,80 @@ void initialize()
     SDL_GL_SetAttribute(SDL_GL_ACCUM_GREEN_SIZE,0);
     SDL_GL_SetAttribute(SDL_GL_ACCUM_BLUE_SIZE,0);
     SDL_GL_SetAttribute(SDL_GL_ACCUM_ALPHA_SIZE,0);
-    
+#endif
+#if !defined(EGL_RAW)
     SDL_ShowCursor(0);
-
+#endif
     fprintf(stderr,"Activating video...\n");
 
+#if defined(OPENGLES)
+    int flags = fullscreen  ? (SDL_SWSURFACE|SDL_FULLSCREEN):SDL_SWSURFACE;
+    int bpp = 16;
+#if defined(WIZ) || defined(CAANOO) || defined(GCW)
+    screenwidth=320; screenheight=240;
+#elif defined(PANDORA)
+    screenwidth=800; screenheight=480;
+    SDL_ShowCursor(1); // keeps it from locking up
+#endif
+#else
+    //int flags = fullscreen ? (SDL_OPENGL|SDL_FULLSCREEN):SDL_OPENGL;
+    int flags = SDL_OPENGL;
+    int bpp = 32;
+#endif
+
+#if DEBUG
+    flags ^= SDL_FULLSCREEN;
+#endif
+
+#if !defined(EGL_RAW)
     icon=SDL_LoadBMP("ken.bmp");
     if (icon==NULL) {
-	fprintf(stderr,"Warning: ken.bmp (icon file) not found.\n");
+        fprintf(stderr,"Warning: ken.bmp (icon file) not found.\n");
     }
     SDL_WM_SetIcon(icon,NULL);
-    if ((screen=SDL_SetVideoMode(screenwidth, screenheight, 32, 
-				 fullscreen?
-				 (SDL_OPENGL|SDL_FULLSCREEN):SDL_OPENGL))==
-	NULL) {
-	fprintf(stderr,"True colour failed; taking whatever is available.\n");
-	SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 5);
-	SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE,5);
-	SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE,5);
-	SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE,16);
-	if ((screen=SDL_SetVideoMode(screenwidth, screenheight, 0, 
-				     fullscreen?
-				     (SDL_OPENGL|SDL_FULLSCREEN):SDL_OPENGL))==
-	    NULL) {
-	    fprintf(stderr,"Video mode set failed.\n");
-	    SDL_Quit();
-	    exit(-1);
-	}
-    }	
+    if ((screen=SDL_SetVideoMode(screenwidth, screenheight, bpp, flags)) == NULL) {
+        fprintf(stderr,"True colour failed; taking whatever is available.\n");
+#if !defined(OPENGLES)
+        SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 5);
+        SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE,5);
+        SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE,5);
+        SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE,16);
+#endif
+        if ((screen=SDL_SetVideoMode(screenwidth, screenheight, 0, flags)) == NULL) {
+            fprintf(stderr,"Video mode set failed.\n");
+            SDL_Quit();
+            exit(-1);
+        }
+    }
+#endif
 
+#ifdef OPENGLES
+    if( EGL_Open( screenwidth, screenheight ) )
+    {
+        fprintf(stderr,"Video mode set failed.\n");
+        SDL_Quit();
+        exit(-1);
+    }
+#endif
+
+#if !defined(OPENGLES)
     SDL_GL_GetAttribute(SDL_GL_RED_SIZE,&realr);
     SDL_GL_GetAttribute(SDL_GL_GREEN_SIZE,&realg);
     SDL_GL_GetAttribute(SDL_GL_BLUE_SIZE,&realb);
     SDL_GL_GetAttribute(SDL_GL_DEPTH_SIZE,&realz);
     SDL_GL_GetAttribute(SDL_GL_DOUBLEBUFFER,&reald);
+#endif
 
     fprintf(stderr,"GL Vendor: %s\n",glGetString(GL_VENDOR));
     fprintf(stderr,"GL Renderer: %s\n",glGetString(GL_RENDERER));
     fprintf(stderr,"GL Version: %s\n",glGetString(GL_VERSION));
     //fprintf(stderr,"GL Extensions: %s\n",glGetString(GL_EXTENSIONS));
 
-    fprintf(stderr,"GLU Version: %s\n",gluGetString(GLU_VERSION));
-    //fprintf(stderr,"GLU Extensions: %s\n",gluGetString(GLU_EXTENSIONS));
 
+    fprintf(stderr,"GLU Version: %s\n",gluGetString(GLU_VERSION));
+
+    //fprintf(stderr,"GLU Extensions: %s\n",gluGetString(GLU_EXTENSIONS));
+#if !defined(OPENGLES)
     if (reald==0) {
 	fprintf(stderr,"Double buffer not available.\n");
 	SDL_Quit();
@@ -100,8 +134,16 @@ void initialize()
 	SDL_Quit();
 	exit(-1);
     }
-
+#else
+    realr = 5;
+    realg = 6;
+    realb = 5;
+    realz = 16;
+    reald = 1;
+#endif
+#if !defined(EGL_RAW)
     SDL_SetGamma(gammalevel,gammalevel,gammalevel);
+#endif
 
     if (realz<24) {
 	walltol=256; neardist=128;
@@ -117,14 +159,14 @@ void initialize()
        fullscreen resolution is invalid. SDL on X fakes it seamlessly. The
        documentation doesn't mention anything about this, so I assume that this
        aspect of SDL is undefined. */
-
+#if !defined(EGL_RAW)
     if ((screenwidth!=screen->w)||(screenheight!=screen->h)) {
 	fprintf(stderr,"Warning: screen resolution is actually %dx%d.\n",
 		screen->w,screen->h);
 	if ((screen->w<screenwidth)||(screen->h<screenheight)) {
 	    fprintf(stderr,"Too small to pad; using full screen.\n");
 	    screenwidth=screen->w;
-	    screenheight=screen->h;	    
+	    screenheight=screen->h;
 	}
 	else {
 	    glViewport((screen->w-screenwidth)>>1,(screen->h-screenheight)>>1,
@@ -132,12 +174,12 @@ void initialize()
 	    fprintf(stderr,"Using a viewport within the screen.\n");
 	}
     }
-
+#endif
     /* Actually, this mode seems to be both more compatible and faster, so
        I think I'll leave it like this. Change this to 1 at your own risk. */
 
-    largescreentexture=0;
-							      
+    largescreentexture=0; // This actually works better for the pandora, its makes the menus show up
+
     if (largescreentexture) {
 	/* One large 512x512 texture. */
 
@@ -153,7 +195,9 @@ void initialize()
     screenbuffer=malloc(screenbufferwidth*screenbufferheight);
     screenbuffer32=malloc(screenbufferwidth*screenbufferheight*4);
 
+#if !defined(EGL_RAW)
     SDL_WM_SetCaption("Ken's Labyrinth", "Ken's Labyrinth");
+#endif
 
     linecompare(479);
 
@@ -162,7 +206,7 @@ void initialize()
 	SDL_Quit();
 	exit(-1);
     }
-    
+
     fprintf(stderr,"Loading tables/settings...\n");
 
     loadtables();
@@ -172,11 +216,13 @@ void initialize()
 	(joyy2 == joyy3))
 	joystat = 1;
 
+#if !defined(EGL_RAW)
     if (joystat==0) {
         fprintf(stderr,"Opening joystick...\n");
 	joystick=SDL_JoystickOpen(0);
 	SDL_JoystickEventState(1);
     }
+#endif
 
     if (joystick==NULL) joystat=1;
 
@@ -218,12 +264,16 @@ void initialize()
     if (musicsource==2) {
 	fprintf(stderr,"Opening Adlib emulation for %s music (%s output)...\n",
 		musicpan?"stereo":"mono",(channels-1)?"stereo":"mono");
+#if defined(WIZ) || defined(CAANOO)
+	adlibinit(22050,channels,2);
+#else
 	adlibinit(44100,channels,2);
+#endif
 	adlibsetvolume(musicvolume*48);
     }
 
     if (speechstatus >= 2)
-    {	
+    {
 	if (((i = open("sounds.kzp",O_BINARY|O_RDONLY,0)) != -1)||
 	    ((i = open("SOUNDS.KZP",O_BINARY|O_RDONLY,0)) != -1)) {
 	    fstat(i, &fstats);
@@ -263,15 +313,18 @@ void initialize()
 		(channels-1)?"stereo":"mono",
 		soundpan?"stereo":"mono");
 
+#if defined(WIZ) || defined(CAANOO)
+	musicsource=2;
+#endif
 	want.freq=(musicsource==2)?44100:11025;
 	want.format=AUDIO_S16SYS;
 	want.channels=channels;
 	want.samples=soundblocksize;
 	want.userdata=NULL;
-	want.callback=AudioCallback;	
+	want.callback=AudioCallback;
 	soundbytespertick=(channels*want.freq*2)/240;
-	soundtimerbytes=0;	
-	
+	soundtimerbytes=0;
+
 	SDL_OpenAudio(&want,NULL);
 
 	reset_dsp();
@@ -304,10 +357,10 @@ void initialize()
     walcounter = initialwalls;
     if (convwalls > initialwalls)
     {
-	v = pic;
+	v = (char*)pic;
 	for(i=0;i<convwalls-initialwalls;i++)
 	{
-	    walseg[walcounter] = v;
+	    walseg[walcounter] = (unsigned char*)v;
 	    walcounter++;
 	    v += 4096;
 	}
@@ -376,17 +429,24 @@ void initialize()
 	    kgif(1);
 
 	fade(63);
-    }  
+    }
 
+#if !defined(EGL_RAW)
     SDL_EnableKeyRepeat(SDL_DEFAULT_REPEAT_DELAY, SDL_DEFAULT_REPEAT_INTERVAL);
+#endif
     SetVisibleScreenOffset(0);
+
+#if !defined(OPENGLES)
     SDL_GL_SwapBuffers();
+#else
+    EGL_SwapBuffers();
+#endif
 
     if (moustat == 0)
 	moustat = setupmouse();
     SDL_LockMutex(timermutex);
     oclockspeed = clockspeed;
-    while ((keystatus[1] == 0) && (keystatus[57] == 0) && 
+    while ((keystatus[1] == 0) && (keystatus[57] == 0) &&
 	   (keystatus[28] == 0) && (bstatus == 0) &&
 	   (clockspeed < oclockspeed+960))
     {
@@ -402,6 +462,7 @@ void initialize()
 	    bstatus|=readjoystick(NULL,NULL);
 	}
 	SDL_UnlockMutex(timermutex);
+
 	SDL_Delay(10);
 	SDL_LockMutex(timermutex);
     }
@@ -461,7 +522,11 @@ void initialize()
 	    glClear( GL_COLOR_BUFFER_BIT);
 	    visiblescreenyoffset=(l/90)-20;
 	    ShowPartialOverlay(20,20+visiblescreenyoffset,320,200,0);
+#if !defined(OPENGLES)
 	    SDL_GL_SwapBuffers();
+#else
+	    EGL_SwapBuffers();
+#endif
 	    SDL_LockMutex(timermutex);
 	}
 	PollInputs();
@@ -487,7 +552,11 @@ void initialize()
 	else
 	    visiblescreenyoffset=(l/90)-20;
 	ShowPartialOverlay(20,20+visiblescreenyoffset,320,200,0);
+#if !defined(OPENGLES)
 	SDL_GL_SwapBuffers();
+#else
+	EGL_SwapBuffers();
+#endif
 	SDL_LockMutex(timermutex);
 
 	while(clockspeed<oclockspeed+4) {

@@ -20,7 +20,8 @@ void drawvolumebar(int vol,int type,float level) {
     gluOrtho2D(0.0, 360.0, -15+30*type, 225+30*type);
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
-	
+
+#if !defined(OPENGLES)
     glBegin(GL_QUADS);
     glColor4f(0,0,0,level);
     glVertex2s(96,110);
@@ -37,8 +38,67 @@ void drawvolumebar(int vol,int type,float level) {
     glVertex2s(96+(vol>>1),130);
     glVertex2s(96+(vol>>1),110);
     glEnd();
+#else
+    GLfloat vtx[] = {
+      96,110,
+      96,130,
+      224,130,
+      224,110,
+      96,110,
+      96,130,
+      96+(vol>>1),130,
+      96+(vol>>1),110
+    };
+
+    GLfloat colors[] = {
+        0,0,0,level,
+        0,0,0,level,
+        0.25,0.25,0.25,level,
+        0.25,0.25,0.25,level,
+        0,0,0,0,
+        0,0,0,0,
+        0,0,0,0,
+        0,0,0,0
+    };
+
+    int i,k;
+    if (type)
+    {
+        for (i=4; i<8; i++)
+        {
+            k = i*4;
+            colors[k+0] = 0;
+            colors[k+1] = 0;
+            colors[k+2] = 255;
+            colors[k+3] = level;
+        }
+    }
+    else
+    {
+        for (i=4; i<8; i++)
+        {
+            k = i*4;
+            colors[k+0] = 255;
+            colors[k+1] = 0;
+            colors[k+2] = 0;
+            colors[k+3] = level;
+        }
+    }
+
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glEnableClientState(GL_COLOR_ARRAY);
+
+    glColorPointer(4, GL_FLOAT, 0, colors);
+    glVertexPointer(2, GL_FLOAT, 0, vtx);
+    glDrawArrays( GL_TRIANGLE_FAN, 0, 8 );
+
+    glDisableClientState(GL_VERTEX_ARRAY);
+    glDisableClientState(GL_COLOR_ARRAY);
+#endif
     glDisable(GL_BLEND);
-    checkGLStatus();
+#if DEBUG
+    checkGLStatus( __FILE__, __LINE__ );
+#endif
 }
 
 int main(int argc,char **argv)
@@ -63,18 +123,30 @@ int main(int argc,char **argv)
        routine (which catches stuff like segfaults) gets in the way of your
        debugging. */
 
+#if defined(WIZ) || defined(CAANOO)
+    if (InitWizCaanoo())
+        return -1;
+#if defined(WIZ)
+    SplashWizCaanoo();
+#endif
+#endif
+
+#if !defined(EGL_RAW)
     SDL_Init(SDL_INIT_TIMER|SDL_INIT_VIDEO|/*SDL_INIT_NOPARACHUTE|*/
 	     SDL_INIT_JOYSTICK);
+#elif defined(EGL_RAW)
+    SDL_Init(SDL_INIT_TIMER );
+#endif
 
     if (((fil = open("end.txt",O_RDONLY|O_BINARY,0)) != -1)||
 	((fil = open("END.TXT",O_RDONLY|O_BINARY,0)) != -1)) {
-	close(fil);	
+	close(fil);
 	lab3dversion=2; /* Version 1.0 detected. */
 	rnumwalls=192;
 	fprintf(stderr, "Ken's Labyrinth version 1.0 detected.\n");
     } else if (((fil = open("boards.dat",O_RDONLY|O_BINARY,0)) != -1)||
 	       ((fil = open("BOARDS.DAT",O_RDONLY|O_BINARY,0)) != -1)) {
-	close(fil);	
+	close(fil);
 	lab3dversion=1; /* Version 1.1 detected. */
 	rnumwalls=0xe0;
 	fprintf(stderr, "Ken's Labyrinth version 1.1 detected.\n");
@@ -257,14 +329,18 @@ int main(int argc,char **argv)
 		    /* Game over, man! */
 
 		    fade(0);
-		    
+
 		    glClearColor(0,0,0,0);
 		    glClear(GL_COLOR_BUFFER_BIT);
 
 		    ingame=0;
 		    fade(fadewarpval);
 		    pictur(180,halfheight,144<<2,0,gameover);
+#if !defined(OPENGLES)
 		    SDL_GL_SwapBuffers();
+#else
+		    EGL_SwapBuffers();
+#endif
 
 		    SDL_Delay(1000);
 
@@ -273,7 +349,11 @@ int main(int argc,char **argv)
 			glClear(GL_COLOR_BUFFER_BIT);
 			fade(i);
 			pictur(180,halfheight,144<<2,0,gameover);
+#if !defined(OPENGLES)
 			SDL_GL_SwapBuffers();
+#else
+			EGL_SwapBuffers();
+#endif
 			SDL_Delay(20);
 		    }
 		    fade(63);
@@ -441,7 +521,7 @@ int main(int argc,char **argv)
 	sortcnt = 0;
 	SDL_LockMutex(soundmutex);
 	SDL_LockMutex(timermutex);
-	
+
 	/* Speed cap at 2 ticks/frame (about 120 fps). */
 	if ((musicstatus == 1) && (clockspeed >= 0) && (clockspeed < 2)) {
 	    SDL_UnlockMutex(soundmutex);
@@ -589,7 +669,7 @@ int main(int argc,char **argv)
 	    // y = (int)((clockspd*sintable[bulang[i]])>>13);
 	    y=(K_INT16)((clockspd*sintable[bulang[i]&1023])>>13);
 	    if (bulang[i]&1024) y=-y;
-	    
+
 	    if (bulkind[i] == 15)
 	    {
 		x -= (x>>1);
@@ -1084,7 +1164,7 @@ int main(int argc,char **argv)
 	tempbuf[mrotbuf[0]] = 20;
 	j = 1;				     //j is stop (end of nodes)
 
-	/* This block converted from asm... Apparently, it does a sort of 
+	/* This block converted from asm... Apparently, it does a sort of
 	   breadth-first search on neighbouring board squares up to a distance
 	   of 20 squares, limited by walls. Translation: it works out which
 	   squares are in the same room within 20 squares, and their distance
@@ -1466,7 +1546,7 @@ int main(int argc,char **argv)
 		    }
 		}
 		if (mstat[i] == monzor || mstat[i] == monke2 || mstat[i] == monan2) {
-		    
+
 		    if (tempbuf[((mposx[i]>>10)<<6)|(mposy[i]>>10)]) {
 			mixing=1;
 			strcpy(textbuf,"BOSS:");
@@ -1475,7 +1555,7 @@ int main(int argc,char **argv)
 			drawmeter((mshot[i]<<8)/3,4096,175,2);
 			mixing=0;
 		    }
-		    
+
 		}
 		if (mstat[i] == monzor)
 		    if ((mshot[i] < 24) && (mshock[i] == 0) && ((rand()&1023) <= clockspd))
@@ -1706,7 +1786,7 @@ int main(int argc,char **argv)
 	/* Handle action button presses... */
 
 	waterstat = 0;
-	if (((getkeydefstat(12) > 0) || 
+	if (((getkeydefstat(12) > 0) ||
 	     ((bstatus&2) > 0)) && (death == 4095)) {
 	    if (!inhibitrepeat)
 	    {
@@ -2349,7 +2429,7 @@ int main(int argc,char **argv)
 	    if (tsvel<-256) tsvel=-256;
 
 	}
-	
+
 
 	if (((vel+myvel) != 0) || (tsvel != 0))
 	{
@@ -2407,7 +2487,7 @@ int main(int argc,char **argv)
 		    ksay(2);
 	    }
 	}
-	
+
 	/* In centre of square (used to check for falling down holes)? */
 
 	i = (board[x][y]&1023);
@@ -2425,12 +2505,12 @@ int main(int argc,char **argv)
 	/* Check cheat keys... */
 
 	if ((keystatus[42] > 0) && (keystatus[54] > 0) && (cheatenable == 1))
-	    cheatkeysdown = 1;	
+	    cheatkeysdown = 1;
 	else if ((keystatus[42] > 0) && (keystatus[29] > 0) && (cheatenable == 2))
 	    cheatkeysdown=1;
-	else	    
+	else
 	    cheatkeysdown = 0;
-	
+
 	/* Check for goodies... */
 
 	if ((keystatus[19] > 0) && (cheatkeysdown == 1)) {
@@ -2699,7 +2779,7 @@ int main(int argc,char **argv)
 	}
 	else
 	    justwarped = 0;
-	
+
 	/* Fade... */
 
 	if (death == 4095)
@@ -3106,7 +3186,11 @@ int main(int argc,char **argv)
 
 		    mixing=0;
 
+#if !defined(OPENGLES)
 		    SDL_GL_SwapBuffers();
+#else
+		    EGL_SwapBuffers();
+#endif
 		}
 	    x = getkeydefstat(15);
 	    y = 1;
@@ -3132,7 +3216,11 @@ int main(int argc,char **argv)
 		    SDL_Delay(10); /* Close enough. */
 		    fade(i+64);
 		    picrot(posx,posy,posz,ang);
+#if !defined(OPENGLES)
 		    SDL_GL_SwapBuffers();
+#else
+		    EGL_SwapBuffers();
+#endif
 		}
 	    wipeoverlay(0,0,361,statusbaryoffset);
 	    picrot(posx,posy,posz,ang);
@@ -3167,7 +3255,7 @@ int main(int argc,char **argv)
 	    mixing=1;
 
 	    loadstory(boardnum);
-	    
+
 	    mixing=0;
 
 	    keystatus[1] = 0; newkeystatus[SDLK_ESCAPE]=0;
@@ -3204,10 +3292,14 @@ int main(int argc,char **argv)
 		fade(j);
 		ShowPartialOverlay(0,0,360,statusbaryoffset,0);
 		mixing=0;
-		
+
 		fade(27);
 
-		SDL_GL_SwapBuffers( );
+#if !defined(OPENGLES)
+		SDL_GL_SwapBuffers();
+#else
+		EGL_SwapBuffers();
+#endif
 
 		SDL_LockMutex(timermutex);
 		while(clockspeed<4) {
@@ -3246,7 +3338,11 @@ int main(int argc,char **argv)
 		SDL_UnlockMutex(timermutex);
 		fade(i);
 		picrot(posx,posy,posz,ang);
+#if !defined(OPENGLES)
 		SDL_GL_SwapBuffers();
+#else
+		EGL_SwapBuffers();
+#endif
 	    }
 	    SDL_LockMutex(timermutex);
 	    clockspeed = 0;
@@ -3263,7 +3359,7 @@ int main(int argc,char **argv)
 	{
 	    SDL_LockMutex(soundmutex); /* Paranoid, I know... */
 	    mute = 1 - mute;
-	    if ((mute == 1) && (musicsource == 1)) { 
+	    if ((mute == 1) && (musicsource == 1)) {
 #ifdef WIN32
 		midiOutReset(sequencerdevice);
 #endif
@@ -3284,7 +3380,11 @@ int main(int argc,char **argv)
 	    if (ototclock > 1)
 	    {
 		picrot(posx,posy,posz,ang);
+#if !defined(OPENGLES)
 		SDL_GL_SwapBuffers();
+#else
+		EGL_SwapBuffers();
+#endif
 		j = mainmenu();
 		picrot(posx,posy,posz,ang);
 		if (j < 7)
@@ -3366,10 +3466,14 @@ int main(int argc,char **argv)
 		    {
 			if (hiscorenamstat == 0)
 			{
+#if !defined(OPENGLES)
 			    glDrawBuffer(GL_FRONT);
+#endif
 			    drawinputbox();
 			    getname();
+#if !defined(OPENGLES)
 			    glDrawBuffer(GL_BACK);
+#endif
 			}
 			if (hiscorenamstat > 0)
 			    savegame(loadsavegameplace);
@@ -3386,7 +3490,7 @@ int main(int argc,char **argv)
 		if (vidmode == 0)
 		    linecompare(statusbar);
 		SDL_LockMutex(timermutex);
-		clockspeed = 0;	
+		clockspeed = 0;
 		SDL_UnlockMutex(timermutex);
 	    }
 	    else
@@ -3448,7 +3552,7 @@ int main(int argc,char **argv)
 	    if (musicvolumevisible<0)
 		musicvolumevisible=0;
 	}
-	    
+
 	if (ototclock <= 0)
 	    ototclock++;
 	else
@@ -3458,9 +3562,13 @@ int main(int argc,char **argv)
 	if ((scoreclock%240) < clockspd)
 	    drawtime(scoreclock);
 
-	SDL_GL_SwapBuffers( );
+#if !defined(OPENGLES)
+	SDL_GL_SwapBuffers();
+#else
+	EGL_SwapBuffers();
+#endif
     }
-    
+
     /* End of main loop. End of game. Tidy up things... */
 
     if (frames>0)

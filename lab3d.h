@@ -15,8 +15,31 @@
 #endif
 
 #include "SDL.h"
+#ifdef OPENGLES
+
+#if defined(CAANOO)
+#include <OpenGLES/egl.h>
+#include <OpenGLES/gl.h>
+#include <OpenGLES/glues.h>
+#else
+#include <GLES/egl.h>
+#include <GLES/gl.h>
+#include <GLES/glues.h>
+#endif
+#include "eglport.h"
+
+#if defined(WIZ) || defined(CAANOO)
+#include "wizcaanoo.h"
+#endif /* defined(WIZ) || defined(CAANOO) */
+
+#define GLdouble GLfloat
+#define GL_CLAMP GL_CLAMP_TO_EDGE
+#define GL_BGR GL_RGB
+
+#else
 #include <GL/gl.h>
 #include <GL/glu.h>
+#endif /* OPENGLES */
 #ifndef GL_BGR
 /* MSVC compatibility hack (some versions have out-of-date OpenGL headers). */
 #define GL_BGR GL_BGR_EXT
@@ -40,7 +63,11 @@
 #ifdef DEBUG_BUFFERS
 #ifdef MAIN
 void SDL_GL_SwapBuffersDebug() {
+#if !defined(OPENGLES)
     SDL_GL_SwapBuffers();
+#else
+    EGL_SwapBuffers();
+#endif
     glClearColor(255,0,0,0);
     glClear(GL_COLOR_BUFFER_BIT);
 }
@@ -346,7 +373,7 @@ EXTERN K_INT16 statusbar, statusbargoal, doorx, doory, doorstat;
 EXTERN K_INT16 fadehurtval, fadewarpval;
 EXTERN K_INT32 ototclock, totalclock, purpletime, greentime, capetime[2];
 EXTERN K_INT32 scoreclock, scorecount;
-EXTERN unsigned char textbuf[41];
+EXTERN char textbuf[41];
 EXTERN K_INT16 musicsource, midiscrap;
 EXTERN K_UINT32 musicstatus, count, countstop;
 EXTERN K_UINT16 numnotes, speed, drumstat, numchans, nownote;
@@ -433,7 +460,7 @@ K_INT16 loadmusic(char*);
 void outdata(unsigned char, unsigned char, unsigned char);
 void musicon();
 void musicoff();
-void setinst(unsigned char, K_INT16, unsigned char, unsigned char, 
+void setinst(unsigned char, K_INT16, unsigned char, unsigned char,
 	     unsigned char, unsigned char, unsigned char, unsigned char,
 	     unsigned char, unsigned char,
 	     unsigned char, unsigned char, unsigned char);
@@ -475,7 +502,7 @@ void ksmhandler();
 void SetVisibleScreenOffset(K_UINT16 offset);
 void ShowPartialOverlay(int x,int y,int w,int h,int statusbar);
 void PollInputs();
-void checkGLStatus();
+void checkGLStatus( char* file, int line );
 void floorsprite(K_UINT16 x, K_UINT16 y, K_INT16 walnume);
 void flatsprite(K_UINT16 x, K_UINT16 y,K_INT16 ang,K_INT16 playerang,
 		K_INT16 walnume);
@@ -519,7 +546,7 @@ int PCkey[SDLKEYS]={
     -1, -1, -1, -1, -1, -1, -1, -1,
     0x52, 0x4f, 0x50, 0x51, 0x4b, 0x4c, 0x4d, 0x47, /* 256-263 */
     0x48, 0x49, 0x53, 0xe0, 0x37, 0x4a, 0x4e, 0xe0, /* 264-271 */
-    -1, 0x48+0x80, 0x50+0x80, 0x4d+0x80, 0x4b+0x80, 0x52+0x80, 0x47+0x80, 
+    -1, 0x48+0x80, 0x50+0x80, 0x4d+0x80, 0x4b+0x80, 0x52+0x80, 0x47+0x80,
     0x4f+0x80, /* 272-279 */
     0x49+0x80, 0x51+0x80, 0x3b, 0x3c, 0x3d, 0x3e, 0x3f, 0x40, /* 280-287 */
     0x41, 0x42, 0x43, 0x44, 87, 88, 0xec, 0xed, /* 288-295 */
@@ -594,7 +621,7 @@ EXTERN int axisdefs[numaxes],axispos[numjoyaxes];
 EXTERN int musicvolume,soundvolume;
 EXTERN int channels;
 K_INT16 ksaystereo(K_UINT16 filenum,K_UINT16 x,K_UINT16 y);
-#if SDL_BYTEORDER == SDL_LIL_ENDIAN  
+#if SDL_BYTEORDER == SDL_LIL_ENDIAN
 #define readLE16 read
 #define readLE32 read
 #define writeLE16 write
