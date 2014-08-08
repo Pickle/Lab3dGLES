@@ -1281,7 +1281,10 @@ void loadwalls(int replace)
     wallparam* cwparam=NULL;
     memset(shadow,0,sizeof(shadow));
 
-    if (replace && (params=fopen("wallparams.ini","rt"))!=NULL) {
+	char path[256];
+	snprintf( path, sizeof(path), "%s\.ken3d\wallparams.ini", getenv("HOME") );
+	
+    if (replace && (params=fopen(path,"rt"))!=NULL) {
 	dotransition=0;
 	int curwall=0;
 	char buf[256];

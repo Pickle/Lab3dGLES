@@ -24,7 +24,7 @@
 #else
 #include <GLES/egl.h>
 #include <GLES/gl.h>
-#include <GLES/glues.h>
+#include "glues/glues.h"
 #endif
 #include "eglport.h"
 

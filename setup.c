@@ -1016,7 +1016,10 @@ void configure(void) {
 }
 
 void loadsettings(void) {
-    FILE *file=fopen("settings.ini","r");
+	char [256];
+	snprintf( path, sizeof(path), "%s\.ken3d\settings.ini", getenv("HOME") );
+	
+    FILE *file=fopen(path,"r");
     int i,versflag,version;
 #if !defined(EGL_RAW)
     SDL_Rect **modes;
@@ -1096,7 +1099,9 @@ void loadsettings(void) {
 }
 
 void savesettings(void) {
-    FILE *file=fopen("settings.ini","w");
+	char path[256];
+	snprintf( path, sizeof(path), "%s\.ken3d\settings.ini", getenv("HOME") );	
+    FILE *file=fopen(path,"w");
     int i;
 
     if (file==NULL) return;
