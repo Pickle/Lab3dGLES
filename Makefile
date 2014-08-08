@@ -59,5 +59,5 @@ ken3d: $(OBJS)
 
 clean:
 	cd glues; make clean
-	rm -f $(OBJS)
+	rm -f *.o
 	rm ken3d
