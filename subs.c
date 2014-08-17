@@ -4754,9 +4754,14 @@ void hiscorecheck()
 {
     K_INT16 i, j, k, m, inse, namexist, fil;
     K_INT32 hiscore[8], scorexist, templong;
+    
+    char path1[256];
+    char path2[256];
+    snprintf( path1, sizeof(path1), "%s/.ken3d/hiscore.dat", getenv("HOME") );    
+    snprintf( path2, sizeof(path2), "%s/.ken3d/HISCORE.DAT", getenv("HOME") );    
 
-    if (((fil = open("hiscore.dat",O_RDWR|O_BINARY,0)) == -1)&&
-	((fil = open("HISCORE.DAT",O_RDWR|O_BINARY,0)) == -1))
+    if (((fil = open(path1,O_RDWR|O_BINARY,0)) == -1)&&
+	((fil = open(path2,O_RDWR|O_BINARY,0)) == -1))
 	return;
 #if !defined(OPENGLES)
     glDrawBuffer(GL_FRONT);
@@ -5999,13 +6004,17 @@ K_INT16 loadsavegamemenu(K_INT16 whichmenu)
     {
 	for(j=0;j<8;j++)
 	{
+        char path[256];
+        
 	    filename[0] = 'S', filename[1] = 'A', filename[2] = 'V';
 	    filename[3] = 'G', filename[4] = 'A', filename[5] = 'M';
 	    filename[6] = 'E', filename[7] = j+48;
 	    filename[8] = '.', filename[9] = 'D', filename[10] = 'A';
 	    filename[11] = 'T', filename[12] = 0;
+       
+        snprintf( path, sizeof(path), "%s/.ken3d/%s", getenv("HOME"), filename );        
 
-	    if((fil=open(filename,O_RDONLY|O_BINARY,0))!=-1)
+	    if((fil=open(path,O_RDONLY|O_BINARY,0))!=-1)
 	    {
 		gamexist[j] = 1;
 		read(fil,&gamehead[j][0],27);
@@ -6017,7 +6026,10 @@ K_INT16 loadsavegamemenu(K_INT16 whichmenu)
 		filename[6] = 'e', filename[7] = j+48;
 		filename[8] = '.', filename[9] = 'd', filename[10] = 'a';
 		filename[11] = 't', filename[12] = 0;
-		if((fil=open(filename,O_RDONLY|O_BINARY,0))!=-1)
+        
+        snprintf( path, sizeof(path), "%s/.ken3d/%s", getenv("HOME"), filename );            
+        
+		if((fil=open(path,O_RDONLY|O_BINARY,0))!=-1)
 		{
 		    gamexist[j] = 1;
 		    read(fil,&gamehead[j][0],27);
