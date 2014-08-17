@@ -377,7 +377,7 @@ int getnumber(void) {
     j = 0;
     buf[0]=0;
     ch = 0;
-#if !defined(EGL_RAW)
+#if defined(USE_EGL_SDL)
     SDL_EnableUNICODE(1);
 #endif
     while ((ch != 13) && (ch != 27))
@@ -424,7 +424,7 @@ int getnumber(void) {
 		j++;
 	}
     }
-#if !defined(EGL_RAW)
+#if defined(USE_EGL_SDL)
     SDL_EnableUNICODE(0);
 #endif
     for(i=0;i<256;i++)
@@ -465,7 +465,7 @@ int modecompare(const void *a, const void *b) {
 
 void setupsetresolution(void) {
     int a;
-#if !defined(EGL_RAW)
+#if defined(USE_EGL_SDL)
     int i,m;
     int resolutionmenusize;
     int detectedresolution[11];
@@ -474,7 +474,7 @@ void setupsetresolution(void) {
 #endif
     a=resolutionmenu(3,0,resolutiontypemenu,0);
 
-#if !defined(EGL_RAW)
+#if defined(USE_EGL_SDL)
     switch(a) {
         case 0:
 	    modes=umodes=SDL_ListModes(NULL,SDL_FULLSCREEN);
@@ -583,9 +583,6 @@ void setupscalingmodemenu(void) {
 
 void setupsetkeys(void) {
     int i=0,j,quit=0,sk;
-#if !defined(EGL_RAW)
-    SDL_Event event;
-#endif
 
     i=0;
     while(!quit) {
@@ -609,6 +606,8 @@ void setupsetkeys(void) {
 #if defined(WIZ) || defined(CAANOO)
 		j = sk = GetButtonsWizCaanoo();
 #else
+        SDL_Event event;        
+        
 		while(SDL_PollEvent(&event))
 		{
 		    switch(event.type)
@@ -1016,17 +1015,17 @@ void configure(void) {
 }
 
 void loadsettings(void) {
-	char [256];
+	char path[256];
 	snprintf( path, sizeof(path), "%s/.ken3d/settings.ini", getenv("HOME") );
 	
     FILE *file=fopen(path,"r");
     int i,versflag,version;
-#if !defined(EGL_RAW)
+#if defined(USE_EGL_SDL)
     SDL_Rect **modes;
 #endif
 
     channels=2; musicvolume=64; soundvolume=64; gammalevel=1.0;
-#if !defined(EGL_RAW)
+#if defined(USE_EGL_SDL)
     modes=SDL_ListModes(NULL,SDL_FULLSCREEN);
 
     i=0;
@@ -1131,10 +1130,8 @@ void setup(void) {
     K_INT16 i, j, k, walcounter;
     K_UINT16 l;
     char *v;
-#if !defined(EGL_RAW)
     SDL_Surface *screen;
     SDL_Surface *icon;
-#endif
 
     configure();
     statusbaryoffset=250;
@@ -1145,14 +1142,10 @@ void setup(void) {
 
     /* Display accuracy not important in setup... */
 
-#if !defined(EGL_RAW)
     SDL_Init(SDL_INIT_TIMER|SDL_INIT_VIDEO/*|SDL_INIT_NOPARACHUTE*/|
 	     SDL_INIT_JOYSTICK);
     SDL_JoystickOpen(0);
     SDL_JoystickEventState(1);
-#elif defined(EGL_RAW)
-    SDL_Init(SDL_INIT_TIMER);
-#endif
 
 #if !defined(OPENGLES)
     SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 5);
@@ -1166,9 +1159,8 @@ void setup(void) {
     SDL_GL_SetAttribute(SDL_GL_ACCUM_BLUE_SIZE,0);
     SDL_GL_SetAttribute(SDL_GL_ACCUM_ALPHA_SIZE,0);
 #endif
-#if !defined(EGL_RAW)
+#if defined(USE_EGL_SDL)
     SDL_ShowCursor(0);
-
     SDL_EnableKeyRepeat(200,30);
 #endif
     fprintf(stderr,"Activating video...\n");
@@ -1177,37 +1169,36 @@ void setup(void) {
     screenwidth=320; screenheight=240;
 #elif defined(PANDORA)
     screenwidth=800; screenheight=480;
-    SDL_ShowCursor(1); // keeps it from locking up
 #else
     screenwidth=360; screenheight=240;
 #endif
 
-#if !defined(EGL_RAW)
+#if defined(OPENGLES)
 int flags = SDL_SWSURFACE;
-#elif !defined(OPENGLES)
+#else
 int flags = SDL_OPENGL;
 #endif
 
-#if !defined(EGL_RAW)
+#if defined(USE_EGL_SDL)
     icon=SDL_LoadBMP("ken.bmp");
     if (icon==NULL) {
 	fprintf(stderr,"Warning: ken.bmp (icon file) not found.\n");
     }
     SDL_WM_SetIcon(icon,NULL);
-
+#endif
+    
     if ((screen=SDL_SetVideoMode(screenwidth, screenheight, 32, flags))== NULL) {
         fprintf(stderr,"Video mode set failed.\n");
         SDL_Quit();
         exit(-1);
     }
-#endif
-#if !defined(EGL_RAW)
+
+#if defined(USE_EGL_SDL)
     SDL_SetGamma(1.0,1.0,1.0); /* Zap gamma correction. */
 #endif
-#if !defined(EGL_RAW)
+
     screenwidth=screen->w;
     screenheight=screen->h;
-#endif
 
     virtualscreenwidth=360;
     virtualscreenheight=240;
@@ -1228,7 +1219,7 @@ int flags = SDL_OPENGL;
 
     screenbuffer=malloc(screenbufferwidth*screenbufferheight);
     screenbuffer32=malloc(screenbufferwidth*screenbufferheight*4);
-#if !defined(EGL_RAW)
+#if defined(USE_EGL_SDL)
     SDL_WM_SetCaption("Ken's Labyrinth", "Ken's Labyrinth");
 #endif
 

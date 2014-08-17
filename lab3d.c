@@ -131,12 +131,8 @@ int main(int argc,char **argv)
 #endif
 #endif
 
-#if !defined(EGL_RAW)
     SDL_Init(SDL_INIT_TIMER|SDL_INIT_VIDEO|/*SDL_INIT_NOPARACHUTE|*/
 	     SDL_INIT_JOYSTICK);
-#elif defined(EGL_RAW)
-    SDL_Init(SDL_INIT_TIMER );
-#endif
 
     if (((fil = open("end.txt",O_RDONLY|O_BINARY,0)) != -1)||
 	((fil = open("END.TXT",O_RDONLY|O_BINARY,0)) != -1)) {

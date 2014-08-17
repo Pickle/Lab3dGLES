@@ -5053,7 +5053,7 @@ void getname()
 
     textprint(180-(strlen(textbuf)<<2),135+1,(char)161);
     ch = 0;
-#if !defined(EGL_RAW)
+#if defined(USE_EGL_SDL)
     SDL_EnableUNICODE(1);
 #endif
     while ((ch != 13) && (ch != 27))
@@ -5100,7 +5100,7 @@ void getname()
 		j++;
 	}
     }
-#if !defined(EGL_RAW)
+#if defined(USE_EGL_SDL)
     SDL_EnableUNICODE(0);
 #endif
     for(i=0;i<256;i++)
@@ -6278,9 +6278,6 @@ void updategameover() {
 /* Get keypress in Unicode form. */
 
 Uint16 getkeypress() {
-#if !defined(EGL_RAW)
-    SDL_Event event;
-#endif
     int sk;
 
 #if defined(WIZ) || defined(CAANOO)
@@ -6290,6 +6287,8 @@ Uint16 getkeypress() {
 
     return sk;
 #else
+    SDL_Event event;    
+    
     while(SDL_PollEvent(&event))
     {
 	switch(event.type)
@@ -6325,16 +6324,13 @@ Uint16 getkeypress() {
 /* Poll for keyboard input or quit command. */
 
 void PollInputs() {
-#if !defined(EGL_RAW)
-    int sk;
-    SDL_Event event;
-#endif
-    //static int i=0;
-
     //printf ("poll %d\n",i++);
 #if defined(WIZ) || defined(CAANOO)
     GetButtonsWizCaanoo();
 #else
+    int sk;
+    SDL_Event event;    
+    
     while(SDL_PollEvent(&event))
     {
 	//printf ("event type=%d\n",event.type);

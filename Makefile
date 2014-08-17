@@ -25,7 +25,7 @@ CFLAGS=-g -Wall -O3 -fsigned-char -ffast-math -fomit-frame-pointer -fstrict-alia
 
 ifeq ($(BUILDTYPE),PANDORA)
 CFLAGS += `$(PREFIX)/usr/bin/sdl-config --cflags` -I$(PREFIX)/usr/include \
-          -DPANDORA -DUSE_EGL_SDL -mcpu=cortex-a8 -mtune=cortex-a8 -march=armv7-a -mfloat-abi=softfp -mfpu=neon -ftree-vectorize \
+          -DPANDORA -DUSE_EGL_RAW -mcpu=cortex-a8 -mtune=cortex-a8 -march=armv7-a -mfloat-abi=softfp -mfpu=neon -ftree-vectorize \
           -fno-strict-aliasing -fsingle-precision-constant
 LDFLAGS += -L$(PREFIX)/usr/lib `$(PREFIX)/usr/bin/sdl-config --libs` \
            -lSDL_image -lX11 -lXau -lXdmcp -lGLES_CM -lEGL -lIMGegl -lsrv_um -lm

@@ -12,10 +12,8 @@ void initialize()
     K_UINT16 l;
     char *v;
     time_t tnow;
-#if !defined(EGL_RAW)
     SDL_Surface *screen;
     SDL_Surface *icon;
-#endif
 
     SDL_AudioSpec want;
     FILE *file;
@@ -49,7 +47,7 @@ void initialize()
     SDL_GL_SetAttribute(SDL_GL_ACCUM_BLUE_SIZE,0);
     SDL_GL_SetAttribute(SDL_GL_ACCUM_ALPHA_SIZE,0);
 #endif
-#if !defined(EGL_RAW)
+#if defined(USE_EGL_SDL)
     SDL_ShowCursor(0);
 #endif
     fprintf(stderr,"Activating video...\n");
@@ -73,14 +71,17 @@ void initialize()
     flags ^= SDL_FULLSCREEN;
 #endif
 
-#if !defined(EGL_RAW)
+#if defined(USE_EGL_SDL)
     icon=SDL_LoadBMP("ken.bmp");
     if (icon==NULL) {
         fprintf(stderr,"Warning: ken.bmp (icon file) not found.\n");
     }
     SDL_WM_SetIcon(icon,NULL);
+#endif
+    
     if ((screen=SDL_SetVideoMode(screenwidth, screenheight, bpp, flags)) == NULL) {
         fprintf(stderr,"True colour failed; taking whatever is available.\n");
+        
 #if !defined(OPENGLES)
         SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 5);
         SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE,5);
@@ -93,7 +94,6 @@ void initialize()
             exit(-1);
         }
     }
-#endif
 
 #ifdef OPENGLES
     if( EGL_Open( screenwidth, screenheight ) )
@@ -141,7 +141,7 @@ void initialize()
     realz = 16;
     reald = 1;
 #endif
-#if !defined(EGL_RAW)
+#if defined(USE_EGL_SDL)
     SDL_SetGamma(gammalevel,gammalevel,gammalevel);
 #endif
 
@@ -159,22 +159,21 @@ void initialize()
        fullscreen resolution is invalid. SDL on X fakes it seamlessly. The
        documentation doesn't mention anything about this, so I assume that this
        aspect of SDL is undefined. */
-#if !defined(EGL_RAW)
     if ((screenwidth!=screen->w)||(screenheight!=screen->h)) {
-	fprintf(stderr,"Warning: screen resolution is actually %dx%d.\n",
+        fprintf(stderr,"Warning: screen resolution is actually %dx%d.\n",
 		screen->w,screen->h);
 	if ((screen->w<screenwidth)||(screen->h<screenheight)) {
 	    fprintf(stderr,"Too small to pad; using full screen.\n");
 	    screenwidth=screen->w;
 	    screenheight=screen->h;
 	}
-	else {
-	    glViewport((screen->w-screenwidth)>>1,(screen->h-screenheight)>>1,
-		       screenwidth,screenheight);
-	    fprintf(stderr,"Using a viewport within the screen.\n");
-	}
+        else {
+            glViewport((screen->w-screenwidth)>>1,(screen->h-screenheight)>>1,
+                screenwidth,screenheight);
+            fprintf(stderr,"Using a viewport within the screen.\n");
+        }
     }
-#endif
+
     /* Actually, this mode seems to be both more compatible and faster, so
        I think I'll leave it like this. Change this to 1 at your own risk. */
 
@@ -195,7 +194,7 @@ void initialize()
     screenbuffer=malloc(screenbufferwidth*screenbufferheight);
     screenbuffer32=malloc(screenbufferwidth*screenbufferheight*4);
 
-#if !defined(EGL_RAW)
+#if defined(USE_EGL_SDL)
     SDL_WM_SetCaption("Ken's Labyrinth", "Ken's Labyrinth");
 #endif
 
@@ -216,13 +215,11 @@ void initialize()
 	(joyy2 == joyy3))
 	joystat = 1;
 
-#if !defined(EGL_RAW)
     if (joystat==0) {
         fprintf(stderr,"Opening joystick...\n");
-	joystick=SDL_JoystickOpen(0);
-	SDL_JoystickEventState(1);
+        joystick=SDL_JoystickOpen(0);
+        SDL_JoystickEventState(1);
     }
-#endif
 
     if (joystick==NULL) joystat=1;
 
@@ -230,9 +227,9 @@ void initialize()
     srand((unsigned int)tnow);
     if ((note = malloc(16384)) == NULL)
     {
-	fprintf(stderr,"Error #1:  Memory allocation failed.\n");
-	SDL_Quit();
-	exit(-1);
+        fprintf(stderr,"Error #1:  Memory allocation failed.\n");
+        SDL_Quit();
+        exit(-1);
     }
 
     if (musicsource==1) {
@@ -431,7 +428,7 @@ void initialize()
 	fade(63);
     }
 
-#if !defined(EGL_RAW)
+#if defined(USE_EGL_SDL)
     SDL_EnableKeyRepeat(SDL_DEFAULT_REPEAT_DELAY, SDL_DEFAULT_REPEAT_INTERVAL);
 #endif
     SetVisibleScreenOffset(0);
