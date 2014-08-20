@@ -5648,6 +5648,9 @@ void creditsmenu()
     textprint(149,20+n+1,32);
     loadstory(-1);
     finalisemenu();
+#if defined(OPENGLES)
+    EGL_SwapBuffers();
+#endif    
     pressakey();
 }
 
@@ -5676,6 +5679,9 @@ void bigstorymenu()
 	nowenterstate = 1;
 	lastenterstate = 1;
 	glFlush();
+#if defined(OPENGLES)
+    EGL_SwapBuffers();
+#endif    
 	while ((nowenterstate <= lastenterstate) && (bstatus <= obstatus))
 	{
 	    PollInputs();
@@ -5709,10 +5715,7 @@ void bigstorymenu()
 		quitstat = 1;
 	}
 	ksay(27);
-
-#ifdef OPENGLES
-	EGL_SwapBuffers();	// Makes the menu show up with the selector
-#endif
+    
     }
 }
 
@@ -5756,6 +5759,10 @@ void helpmenu()
     strcpy(&textbuf[0],"Help");
     textprint(161,18+n+1,32);
     finalisemenu();
+    
+#if defined(OPENGLES)
+    EGL_SwapBuffers();
+#endif    
     pressakey();
 }
 
@@ -5971,6 +5978,10 @@ void orderinfomenu() {
     textprint(30,156,48);
 
     finalisemenu();
+    
+#if defined(OPENGLES)
+    EGL_SwapBuffers();
+#endif    
     pressakey();
 
 }

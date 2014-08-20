@@ -2,22 +2,22 @@
 ifeq ($(BUILDTYPE),PANDORA)
 PREFIX	= $(PNDSDK)
 TOOLS	= bin
-TARGET	= arm-none-linux-gnueabi
+TARGET	= arm-none-linux-gnueabi-
 else ifeq ($(BUILDTYPE),WIZ)
 PREFIX	= $(WIZSDK)
 TOOLS	= bin
-TARGET	= arm-openwiz-linux-gnu
+TARGET	= arm-openwiz-linux-gnu-
 else ifeq ($(BUILDTYPE),CAANOO)
 PREFIX	= $(CAANOOSDK)
 TOOLS	= tools/gcc-4.2.4-glibc-2.7-eabi/bin
-TARGET	= arm-gph-linux-gnueabi
+TARGET	= arm-gph-linux-gnueabi-
 else ifeq ($(BUILDTYPE),GCW)
 PREFIX	= $(GCWSDK)
 TOOLS	= bin
-TARGET	= mipsel-gcw0-linux-uclibc
+TARGET	= mipsel-gcw0-linux-uclibc-
 endif
 
-CC = $(PREFIX)/$(TOOLS)/$(TARGET)-gcc
+CC = $(PREFIX)/$(TOOLS)/$(TARGET)gcc
 
 OBJS=subs.o init.o graphx.o lab3d.o setup.o adlibemu.o oldlab3d.o eglport.o
 
