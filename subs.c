@@ -1128,14 +1128,15 @@ void UploadTexture(GLuint tex, void* pixels, int w, int h,  int repx, int repy, 
     glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, repx?GL_REPEAT:GL_CLAMP_TO_EDGE);
     glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, magfilt);
     glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, minfilt);
-
+          
     if (mipmaps) {
-	if (anisotropic)
-	    SetAnisotropic();
-
-	BuildMipmaps (pixels, w, h, hasalpha,20);
+        
+        if (anisotropic)
+            SetAnisotropic();
+        BuildMipmaps (pixels, w, h, hasalpha, 20);
 
     } else {
+        
         GLint format = (hasalpha > 0) ? GL_RGBA : GL_RGB;
 
         glTexImage2D (GL_TEXTURE_2D, 0, format, w, h, 0, format,
@@ -5070,54 +5071,60 @@ void getname()
     ch = 0;
     SDL_EnableUNICODE(1);
 
+#if defined(GCW) || defined(CAANOO) || defined(WIZ)
+    strncpy( hiscorenam, "Player", sizeof(textbuf)-1 );
+    j = strlen( hiscorenam );
+#else
+    
     while ((ch != 13) && (ch != 27))
     {
 #if defined(OPENGLES)        
-      EGL_SwapBuffers();  
+        EGL_SwapBuffers();  
 #endif
-        
-	while ((ch=getkeypress()) == 0)
-	{
-	    textbuf[0] = 95;
-	    textbuf[1] = 0;
-	    textprint(94+(j<<3),145,(char)97);
-	    glFlush();
-	    SDL_Delay(10); /* Just to avoid soaking all CPU. */
-	    textbuf[0] = 8;
-	    textbuf[1] = 0;
-	    textprint(94+(j<<3),145,(char)0);
-	    glFlush();
-	    SDL_Delay(10); /* Just to avoid soaking all CPU. */
-	}
-	if (ch == SDLK_DELETE)
-	{
-	    hiscorenam[j] = ch;
-	    for(j=0;j<16;j++)
-		hiscorenam[j] = 0;
-	    for(j=0;j<12;j++)
-		textbuf[j] = 8;
-	    textbuf[12] = 0;
-	    textprint(94,145+1,(char)0);
-	    j = 0;
-	    ch = 0;
-	}
-	if ((ch == 8) && (j > 0))
-	{
-	    j--, hiscorenam[j] = 0;
-	    textbuf[0] = ch;
-	    textbuf[1] = 0;
-	    textprint(94+(j<<3),145+1,(char)0);
-	}
-	if ((ch >= 32) && (ch <= 127) && (j < 12))
-	{
-	    textbuf[0] = ch;
-	    textbuf[1] = 0;
-	    textprint(94+(j<<3),145+1,(char)97);
-	    hiscorenam[j] = ch;
-	    if ((ch != 32) || (j > 0))
-		j++;
-	}
+      
+        while ((ch=getkeypress()) == 0)
+        {
+            textbuf[0] = 95;
+            textbuf[1] = 0;
+            textprint(94+(j<<3),145,(char)97);
+            glFlush();
+            SDL_Delay(10); /* Just to avoid soaking all CPU. */
+            textbuf[0] = 8;
+            textbuf[1] = 0;
+            textprint(94+(j<<3),145,(char)0);
+            glFlush();
+            SDL_Delay(10); /* Just to avoid soaking all CPU. */
+        }
+        if (ch == SDLK_DELETE)
+        {
+            hiscorenam[j] = ch;
+            for(j=0;j<16;j++)
+            hiscorenam[j] = 0;
+            for(j=0;j<12;j++)
+            textbuf[j] = 8;
+            textbuf[12] = 0;
+            textprint(94,145+1,(char)0);
+            j = 0;
+            ch = 0;
+        }
+        if ((ch == 8) && (j > 0))
+        {
+            j--, hiscorenam[j] = 0;
+            textbuf[0] = ch;
+            textbuf[1] = 0;
+            textprint(94+(j<<3),145+1,(char)0);
+        }
+        if ((ch >= 32) && (ch <= 127) && (j < 12))
+        {
+            textbuf[0] = ch;
+            textbuf[1] = 0;
+            textprint(94+(j<<3),145+1,(char)97);
+            hiscorenam[j] = ch;
+            if ((ch != 32) || (j > 0))
+            j++;
+        }
     }
+#endif /* defined(GCW) || defined(CAANOO) || defined(WIZ) */
 
     SDL_EnableUNICODE(0);
 
