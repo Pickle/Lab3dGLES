@@ -114,6 +114,12 @@ int main(int argc,char **argv)
     K_UINT32 frames=0,timeused=0;
     K_INT16 soundvolumevisible=0,musicvolumevisible=0;
     int fil;
+    
+#if defined(WIZ) || defined(CAANOO)
+    homedir = getenv( "PWD" );
+#else
+    homedir = getenv( "HOME" );    
+#endif
 
     clockspd=0;
 

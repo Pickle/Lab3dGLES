@@ -1283,7 +1283,7 @@ void loadwalls(int replace)
     memset(shadow,0,sizeof(shadow));
 
 	char path[256];
-	snprintf( path, sizeof(path), "%s/.ken3d/wallparams.ini", getenv("HOME") );
+	snprintf( path, sizeof(path), "%s/.ken3d/wallparams.ini", homedir );
 	
     if (replace && (params=fopen(path,"rt"))!=NULL) {
 	dotransition=0;
@@ -1894,7 +1894,7 @@ K_INT16 loadgame(K_INT16 gamenum)
     filename[8] = '.', filename[9] = 'D', filename[10] = 'A';
     filename[11] = 'T', filename[12] = 0;
     
-    snprintf( path, sizeof(path), "%s/.ken3d/%s", getenv("HOME"), filename );
+    snprintf( path, sizeof(path), "%s/.ken3d/%s", homedir, filename );
     
     if((fil=open(path,O_RDONLY|O_BINARY,0))==-1) {
 	filename[0] = 's', filename[1] = 'a', filename[2] = 'v';
@@ -1903,7 +1903,7 @@ K_INT16 loadgame(K_INT16 gamenum)
 	filename[8] = '.', filename[9] = 'd', filename[10] = 'a';
 	filename[11] = 't', filename[12] = 0;
     
-    snprintf( path, sizeof(path), "%s/.ken3d/%s", getenv("HOME"), filename );
+    snprintf( path, sizeof(path), "%s/.ken3d/%s", homedir, filename );
 
 	if((fil=open(path,O_RDONLY|O_BINARY,0))==-1)
 	    return -1;
@@ -2086,7 +2086,7 @@ K_INT16 savegame(K_INT16 gamenum)
     filename[8] = '.', filename[9] = 'D', filename[10] = 'A';
     filename[11] = 'T', filename[12] = 0;
     
-    snprintf( path, sizeof(path), "%s/.ken3d/%s", getenv("HOME"), filename );
+    snprintf( path, sizeof(path), "%s/.ken3d/%s", homedir, filename );
     
     if((fil=open(path,O_CREAT|O_WRONLY|O_BINARY,
 		 S_IWRITE|S_IREAD|S_IRGRP|S_IROTH))==-1) {
@@ -4758,8 +4758,8 @@ void hiscorecheck()
     
     char path1[256];
     char path2[256];
-    snprintf( path1, sizeof(path1), "%s/.ken3d/hiscore.dat", getenv("HOME") );    
-    snprintf( path2, sizeof(path2), "%s/.ken3d/HISCORE.DAT", getenv("HOME") );    
+    snprintf( path1, sizeof(path1), "%s/.ken3d/hiscore.dat", homedir );    
+    snprintf( path2, sizeof(path2), "%s/.ken3d/HISCORE.DAT", homedir );    
 
     if (((fil = open(path1,O_RDWR|O_BINARY,0)) == -1)&&
 	((fil = open(path2,O_RDWR|O_BINARY,0)) == -1))
@@ -6030,7 +6030,7 @@ K_INT16 loadsavegamemenu(K_INT16 whichmenu)
 	    filename[8] = '.', filename[9] = 'D', filename[10] = 'A';
 	    filename[11] = 'T', filename[12] = 0;
        
-        snprintf( path, sizeof(path), "%s/.ken3d/%s", getenv("HOME"), filename );        
+        snprintf( path, sizeof(path), "%s/.ken3d/%s", homedir, filename );        
 
 	    if((fil=open(path,O_RDONLY|O_BINARY,0))!=-1)
 	    {
@@ -6045,7 +6045,7 @@ K_INT16 loadsavegamemenu(K_INT16 whichmenu)
 		filename[8] = '.', filename[9] = 'd', filename[10] = 'a';
 		filename[11] = 't', filename[12] = 0;
         
-        snprintf( path, sizeof(path), "%s/.ken3d/%s", getenv("HOME"), filename );            
+        snprintf( path, sizeof(path), "%s/.ken3d/%s", homedir, filename );            
         
 		if((fil=open(path,O_RDONLY|O_BINARY,0))!=-1)
 		{

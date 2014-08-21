@@ -261,6 +261,7 @@ typedef Sint16 K_INT16;
 #endif
 
 /* Global variables that actually get initialised here... */
+EXTERN char *homedir;
 
 #ifdef MAIN
 EXTERN unsigned char bultype[26] =

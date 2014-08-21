@@ -1016,7 +1016,7 @@ void configure(void) {
 
 void loadsettings(void) {
 	char path[256];
-	snprintf( path, sizeof(path), "%s/.ken3d/settings.ini", getenv("HOME") );
+	snprintf( path, sizeof(path), "%s/.ken3d/settings.ini", homedir );
 	
     FILE *file=fopen(path,"r");
     int i,versflag,version;
@@ -1099,7 +1099,7 @@ void loadsettings(void) {
 
 void savesettings(void) {
 	char path[256];
-	snprintf( path, sizeof(path), "%s/.ken3d/settings.ini", getenv("HOME") );	
+	snprintf( path, sizeof(path), "%s/.ken3d/settings.ini", homedir );	
     FILE *file=fopen(path,"w");
     int i;
 
